@@ -9,6 +9,7 @@
 
 #include <QtQuick/QQuickWindow>
 #include <QtWidgets/QApplication>
+#include <unistd.h>
 
 #ifdef Q_OS_MACOS
     #include <QtCore/QProcessEnvironment>

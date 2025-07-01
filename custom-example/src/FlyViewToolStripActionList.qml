@@ -22,6 +22,9 @@ ToolStripActionList {
         GuidedActionTakeoff { },
         GuidedActionLand { },
         GuidedActionRTL { },
+        
+        GuidedCallibrationButton{ },
+
         GuidedActionPause { },
         FlyViewAdditionalActionsButton { },
         GuidedToolStripAction {
@@ -30,6 +33,6 @@ ToolStripActionList {
             visible:    true
             enabled:    true
             actionID:   _guidedController._customController.actionCustomButton
-}
+        }
     ]
 }

@@ -69,6 +69,9 @@ Item {
 
     readonly property real _margins: ScreenTools.defaultFontPixelWidth
 
+    property real _totalLineDistance:           _currentMissionItemValid && _currentMissionItem.totalLineDistance !== undefined ? _currentMissionItem.totalLineDistance : NaN
+    property string _totalLineDistanceText:     isNaN(_totalLineDistance) ? "-.-" : QGroundControl.unitsConversion.metersToAppSettingsHorizontalDistanceUnits(_totalLineDistance).toFixed(0) + " " + QGroundControl.unitsConversion.appSettingsHorizontalDistanceUnitsString
+
     // Properties of UTM adapter
     property bool   _utmspEnabled:                       QGroundControl.utmspSupported
 
@@ -190,6 +193,13 @@ Item {
             QGCLabel { text: qsTr("Distance:"); font.pointSize: _dataFontSize; }
             QGCLabel {
                 text:                   _missionPlannedDistanceText
+                font.pointSize:         _dataFontSize
+                Layout.minimumWidth:    _largeValueWidth
+            }
+
+            QGCLabel { text: qsTr("Exact Spraying Distance:"); font.pointSize: _dataFontSize; }
+            QGCLabel {
+                text:                   _totalLineDistanceText
                 font.pointSize:         _dataFontSize
                 Layout.minimumWidth:    _largeValueWidth
             }

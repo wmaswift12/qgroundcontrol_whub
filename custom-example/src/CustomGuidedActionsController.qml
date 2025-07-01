@@ -21,9 +21,9 @@ QtObject {
     function customConfirmAction(actionCode, actionData, mapIndicator, confirmDialog) {
         switch (actionCode) {
         case actionCustomButton:
-            confirmDialog.hideTrigger = true
-            confirmDialog.title = customButtonTitle
-            confirmDialog.message = customButtonMessage
+            confirmDialog.hideTrigger   = true
+            confirmDialog.title         = customButtonTitle
+            confirmDialog.message       = customButtonMessage
             break
         default:
             return false // false = action not handled here

@@ -11,7 +11,6 @@ import QGroundControl.Controls
 import QGroundControl.FactControls
 import QGroundControl.Palette
 
-
 /// Mission item edit control
 Rectangle {
     id:             _root
@@ -22,10 +21,13 @@ Rectangle {
     border.width:   _readyForSave ? 0 : 2
     border.color:   qgcPal.warningText
 
-    property var    map                 ///< Map control
+    property var    map                 
+    ///< Map control
     property var    masterController
-    property var    missionItem         ///< MissionItem associated with this editor
-    property bool   readOnly            ///< true: read only view, false: full editing view
+    property var    missionItem         
+    ///< MissionItem associated with this editor
+    property bool   readOnly            
+    ///< true: read only view, false: full editing view
 
     signal clicked
     signal remove

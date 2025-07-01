@@ -130,3 +130,12 @@ ValueSlider                             1.0 ValueSlider.qml
 VehicleMessageList                      1.0 VehicleMessageList.qml
 VehicleRotationCal                      1.0 VehicleRotationCal.qml
 VehicleSummaryRow                       1.0 VehicleSummaryRow.qml
+
+SprayStyleBlanketItemEditor		        1.0 SprayStyleBlanketItemEditor.qml
+SprayStyleBlanketItemStats           	1.0 SprayStyleBlanketItemStats.qml
+SprayGrid                               1.0 SprayGrid.qml
+
+SprayStyleSpotItemEditor		        1.0 SprayStyleSpotItemEditor.qml
+SprayStyleSpotItemStats           	    1.0 SprayStyleSpotItemStats.qml
+SpotCalcGrid                            1.0 SpotCalcGrid.qml
+

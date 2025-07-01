@@ -32,6 +32,9 @@ public:
     Q_PROPERTY(QStringList      cameraModelList             MEMBER _cameraModelList                                             NOTIFY cameraModelListChanged)
     Q_PROPERTY(Fact*            valueSetIsDistance          READ valueSetIsDistance                                             CONSTANT)                                   ///< true: distance specified, resolution calculated
     Q_PROPERTY(Fact*            distanceToSurface           READ distanceToSurface                                              CONSTANT)                                   ///< Distance to surface for image foot print calculation
+    
+    Q_PROPERTY(Fact*            param1Waypoints             READ param1Waypoints                                                CONSTANT) ///< param1 for testings on Waypoint    
+    
     Q_PROPERTY(Fact*            imageDensity                READ imageDensity                                                   CONSTANT)                                   ///< Image density on surface (cm/px)
     Q_PROPERTY(Fact*            frontalOverlap              READ frontalOverlap                                                 CONSTANT)
     Q_PROPERTY(Fact*            sideOverlap                 READ sideOverlap                                                    CONSTANT)
@@ -57,6 +60,9 @@ public:
 
     Fact* valueSetIsDistance        (void) { return &_valueSetIsDistanceFact; }
     Fact* distanceToSurface         (void) { return &_distanceToSurfaceFact; }
+
+    Fact* param1Waypoints           (void) { return &_param1WaypointsFact; }
+
     Fact* imageDensity              (void) { return &_imageDensityFact; }
     Fact* frontalOverlap            (void) { return &_frontalOverlapFact; }
     Fact* sideOverlap               (void) { return &_sideOverlapFact; }
@@ -65,6 +71,9 @@ public:
 
     const Fact* valueSetIsDistance          (void) const { return &_valueSetIsDistanceFact; }
     const Fact* distanceToSurface           (void) const { return &_distanceToSurfaceFact; }
+    
+    const Fact* param1Waypoints             (void) const { return &_param1WaypointsFact; }
+    
     const Fact* imageDensity                (void) const { return &_imageDensityFact; }
     const Fact* frontalOverlap              (void) const { return &_frontalOverlapFact; }
     const Fact* sideOverlap                 (void) const { return &_sideOverlapFact; }
@@ -89,6 +98,9 @@ public:
     static constexpr const char* cameraNameName                  = "CameraName";
     static constexpr const char* valueSetIsDistanceName          = "ValueSetIsDistance";
     static constexpr const char* distanceToSurfaceName           = "DistanceToSurface";
+
+    static constexpr const char* param1WaypointsName             = "Param1Waypoints";
+
     static constexpr const char* distanceModeName                = "DistanceMode";
     static constexpr const char* imageDensityName                = "ImageDensity";
     static constexpr const char* frontalOverlapName              = "FrontalOverlap";
@@ -132,6 +144,9 @@ private:
     SettingsFact _cameraNameFact;
     SettingsFact _valueSetIsDistanceFact;
     SettingsFact _distanceToSurfaceFact;
+
+    SettingsFact _param1WaypointsFact;
+
     SettingsFact _imageDensityFact;
     SettingsFact _frontalOverlapFact;
     SettingsFact _sideOverlapFact;

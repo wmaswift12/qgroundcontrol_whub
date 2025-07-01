@@ -589,6 +589,9 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
     case MAVLINK_MSG_ID_FENCE_STATUS:
         _handleFenceStatus(message);
         break;
+    case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
+        _handleNamedValueFloat(message);
+        break;
 
     case MAVLINK_MSG_ID_EVENT:
     case MAVLINK_MSG_ID_CURRENT_EVENT_SEQUENCE:
@@ -666,6 +669,46 @@ void Vehicle::_handleCameraFeedback(const mavlink_message_t& message)
     _cameraTriggerPoints.append(new QGCQGeoCoordinate(imageCoordinate, this));
 }
 #endif
+//MODIFY to read VOLUME sprayed
+void Vehicle::_handleNamedValueFloat(mavlink_message_t& message)
+{
+    // Declare a structure to hold the decoded message data
+    mavlink_named_value_float_t namedValueFloat;
+
+    // Decode the MAVLink message into the structure
+    mavlink_msg_named_value_float_decode(&message, &namedValueFloat);
+
+    // Extract the timestamp (time_boot_ms)
+    quint32 timeBootMs = namedValueFloat.time_boot_ms;
+
+    // Extract the name. The 'name' field in mavlink_named_value_float_t
+    // is a char array of size 10. It's crucial to handle it as a null-terminated string.
+    // QGC often uses QString for string manipulation.
+    QString name = QString::fromUtf8(namedValueFloat.name, sizeof(namedValueFloat.name));
+    // Remove any trailing null characters or padding bytes from the fixed-size buffer
+    name = name.trimmed();
+
+    // Extract the value
+    float value = namedValueFloat.value;
+
+    // --- Process the received data ---
+    // Here you would typically:
+    // 1. Log the value
+    // 2. Update a UI element
+    // 3. Store it in a data model associated with the vehicle
+    // 4. Trigger an event or signal for other parts of QGC to react to
+
+    qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
+             << "Received NAMED_VALUE_FLOAT:"
+             << "Time (ms):" << timeBootMs
+             << "Name:" << name
+             << "Value:" << value;
+
+    // Example: If you have a QMap or QHash to store these values dynamically
+    // this->_customFloatValues.insert(name, value);
+    // emit this->customValueUpdated(name, value); // Emit a signal for UI updates
+}
+//END Modify
 
 void Vehicle::_handleOrbitExecutionStatus(const mavlink_message_t& message)
 {

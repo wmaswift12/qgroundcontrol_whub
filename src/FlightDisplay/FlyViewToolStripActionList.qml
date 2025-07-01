@@ -48,6 +48,9 @@ ToolStripActionList {
         GuidedActionTakeoff { },
         GuidedActionLand { },
         GuidedActionRTL { },
+
+        GuidedCallibrationButton{ },
+
         GuidedActionPause { },
         FlyViewAdditionalActionsButton { },
         GuidedActionGripper { }

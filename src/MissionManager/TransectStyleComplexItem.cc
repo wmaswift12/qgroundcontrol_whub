@@ -56,6 +56,7 @@ TransectStyleComplexItem::TransectStyleComplexItem(PlanMasterController* masterC
     connect(_cameraCalc.adjustedFootprintSide(),        &Fact::valueChanged,                this, &TransectStyleComplexItem::_rebuildTransects);
     connect(_cameraCalc.adjustedFootprintFrontal(),     &Fact::valueChanged,                this, &TransectStyleComplexItem::_rebuildTransects);
     connect(_cameraCalc.distanceToSurface(),            &Fact::rawValueChanged,             this, &TransectStyleComplexItem::_rebuildTransects);
+    
     connect(&_cameraCalc,                               &CameraCalc::distanceModeChanged,   this, &TransectStyleComplexItem::_rebuildTransects);
 
     connect(&_turnAroundDistanceFact,                   &Fact::valueChanged,            this, &TransectStyleComplexItem::complexDistanceChanged);
@@ -167,6 +168,8 @@ void TransectStyleComplexItem::_save(QJsonObject& complexObject)
     missionItemParent->deleteLater();
     innerObject[_jsonItemsKey] = missionItemsJsonArray;
 
+    //innerObject["Param1Waypoints"] = _cameraCalc.param1Waypoints()->rawValue().toDouble();
+    
     complexObject[_jsonTransectStyleComplexItemKey] = innerObject;
 }
 
@@ -226,6 +229,8 @@ bool TransectStyleComplexItem::_load(const QJsonObject& complexObject, bool forP
         { _jsonVisualTransectPointsKey,     QJsonValue::Array,  !forPresets },
         { _jsonItemsKey,                    QJsonValue::Array,  !forPresets },
         { _jsonCameraShotsKey,              QJsonValue::Double, true },
+
+        //{ "Param1Waypoints", QJsonValue::Double, true },
     };
     if (!JsonHelper::validateKeys(innerObject, innerKeyInfoList, errorString)) {
         return false;
@@ -252,6 +257,7 @@ bool TransectStyleComplexItem::_load(const QJsonObject& complexObject, bool forP
             }
             _loadedMissionItems.append(missionItem);
         }
+        qCDebug(TransectStyleComplexItemLog) << "Loading Mission Items all";
     }
 
     // Load CameraCalc data
@@ -264,6 +270,13 @@ bool TransectStyleComplexItem::_load(const QJsonObject& complexObject, bool forP
     _cameraTriggerInTurnAroundFact.setRawValue  (innerObject[cameraTriggerInTurnAroundName].toBool());
     _hoverAndCaptureFact.setRawValue            (innerObject[hoverAndCaptureName].toBool());
     _refly90DegreesFact.setRawValue             (innerObject[refly90DegreesName].toBool());
+
+    /*if (innerObject.contains("Param1Waypoints")) {
+        _cameraCalc.param1Waypoints()->setRawValue(innerObject["Param1Waypoints"].toDouble());
+    } else {
+        qCDebug(TransectStyleComplexItemLog) << "Param1Waypoints key missing from plan file. Using default.";
+        _cameraCalc.param1Waypoints()->setRawValue(0.0); // Or your preferred default
+    }*/    
 
     // These two keys where not included in initial implementation so they are optional. Without them the values will be
     // incorrect when loaded though.
@@ -300,6 +313,7 @@ bool TransectStyleComplexItem::_load(const QJsonObject& complexObject, bool forP
                     _maxAMSLAltitude = std::fmax(_maxAMSLAltitude, missionItem->param7());
                 }
             }
+            qCDebug(TransectStyleComplexItemLog) << "Loading Mission Items, params7 min max ALT";
         }
     }
 
@@ -307,12 +321,14 @@ bool TransectStyleComplexItem::_load(const QJsonObject& complexObject, bool forP
         if (_cameraCalc.distanceMode() == QGroundControlQmlGlobal::AltitudeModeTerrainFrame) {
             // Terrain frame requires terrain data in order to know AMSL coordinate heights for each mission item
             _queryMissionItemCoordHeights();
+            qCDebug(TransectStyleComplexItemLog) << "emit Altitude HEIGHTS";
         } else {
             emit minAMSLAltitudeChanged();
             emit maxAMSLAltitudeChanged();
             _amslEntryAltChanged();
             _amslExitAltChanged();
             emit _updateFlightPathSegmentsSignal();
+            qCDebug(TransectStyleComplexItemLog) << "emit Altitude change MIN MAX";
         }
     }
 
@@ -520,6 +536,7 @@ void TransectStyleComplexItem::_updateFlightPathSegmentsDontCallDirectly(void)
                     }
                     prevCoord = missionItem->coordinate();
                     prevAlt = missionItem->param7();
+                    qCDebug(TransectStyleComplexItemLog) << "GeoCoordniate include param7 Altitude";
                 }
             }
         } else {
@@ -710,6 +727,7 @@ void TransectStyleComplexItem::_adjustForAvailableTerrainData(void)
     emit _updateFlightPathSegmentsSignal();
     emit minAMSLAltitudeChanged();
     emit maxAMSLAltitudeChanged();
+    qCDebug(TransectStyleComplexItemLog) << "Emits signal Altitude change in TERRAIN";
 }
 
 /// Returns the altitude in between the two points on a line.
@@ -1119,12 +1137,13 @@ void TransectStyleComplexItem::appendMissionItems(QList<MissionItem*>& items, QO
 
 void TransectStyleComplexItem::_appendWaypoint(QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, MAV_FRAME mavFrame, float holdTime, const QGeoCoordinate& coordinate)
 {
+    qCDebug(TransectStyleComplexItemLog) << "Loading Mission Items and Altitude at WAYPOINTS";
     double altitude = _cameraCalc.distanceMode() == QGroundControlQmlGlobal::AltitudeModeCalcAboveTerrain ? coordinate.altitude() : _cameraCalc.distanceToSurface()->rawValue().toDouble();
 
     MissionItem* item = new MissionItem(seqNum++,
                                         MAV_CMD_NAV_WAYPOINT,
                                         mavFrame,
-                                        holdTime,
+                                        holdTime, // param1: Hold time in seconds
                                         0.0,                                         // No acceptance radius specified
                                         0.0,                                         // Pass through waypoint
                                         std::numeric_limits<double>::quiet_NaN(),    // Yaw unchanged
@@ -1322,9 +1341,16 @@ void TransectStyleComplexItem::addKMLVisuals(KMLPlanDomDocument& domDocument)
 
 void TransectStyleComplexItem::_recalcComplexDistance(void)
 {
+    double distanceWaypoint = 0;
     _complexDistance = 0;
     for (int i=0; i<_visualTransectPoints.count() - 1; i++) {
         _complexDistance += _visualTransectPoints[i].value<QGeoCoordinate>().distanceTo(_visualTransectPoints[i+1].value<QGeoCoordinate>());
+        distanceWaypoint = _visualTransectPoints[i].value<QGeoCoordinate>().distanceTo(_visualTransectPoints[i+1].value<QGeoCoordinate>());
+        
+        qCDebug(TransectStyleComplexItemLog) << "______________________________Waypoint: to next point:" << i << i+1;
+        qCDebug(TransectStyleComplexItemLog) << "______________________________Distance between:" << distanceWaypoint;
+        qCDebug(TransectStyleComplexItemLog) << "______________________________RESULT, complexDistance:" << _complexDistance;
+        qCDebug(TransectStyleComplexItemLog) << "____________________________________________________________________________";
     }
     emit complexDistanceChanged();
 }

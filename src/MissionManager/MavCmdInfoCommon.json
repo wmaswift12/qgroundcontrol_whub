@@ -1098,6 +1098,7 @@
                 "default":          1
             }
         },
+
         { "id": 220, "rawName": "MAV_CMD_DO_MOUNT_CONTROL_QUAT" },
         { "id": 221, "rawName": "MAV_CMD_DO_GUIDED_MASTER" },
         {
@@ -1243,6 +1244,35 @@
             }
         },
         { "id": 30001, "rawName": "MAV_CMD_PAYLOAD_PREPARE_DEPLOY", "friendlyName": "Payload prepare deploy" },
-        { "id": 30002, "rawName": "MAV_CMD_PAYLOAD_CONTROL_DEPLOY", "friendlyName": "Payload control deploy" }
+        { "id": 30002, "rawName": "MAV_CMD_PAYLOAD_CONTROL_DEPLOY", "friendlyName": "Payload control deploy" },
+        
+        {
+            "id": 215,
+            "rawName": "MAV_CMD_DO_SET_RESUME_REPEAT_DIST",
+            "description": "Resume mission item and repeat n times",
+            "friendlyName": "DO_SET_RESUME_REPEAT",
+            "category": "DO",
+            "param1": { "label": "Distance (m)", "default": 1 },
+            "param2": { "label": "", "default": 0 },
+            "param3": { "label": "", "default": 0 },
+            "param4": { "label": "", "default": 0 },
+            "param5": { "label": "", "default": 0 },
+            "param6": { "label": "", "default": 0 },
+            "param7": { "label": "", "default": 0 }
+        },   
+        {
+            "id": 42702,
+            "rawName": "MAV_CMD_NAV_SCRIPT_TIME",
+            "description": "Delay and trigger script",
+            "friendlyName": "SCRIPT_TIME",
+            "category": "Script",
+            "param1": { "label": "Spray (Spot/Blanket)", "default": 0 },
+            "param2": { "label": "", "default": 0 },
+            "param3": { "label": "Amount (ml)", "default": 0 },
+            "param4": { "label": "", "default": 1 },
+            "param5": { "label": "", "default": 0 },
+            "param6": { "label": "", "default": 0 },
+            "param7": { "label": "", "default": 0 }
+        }
     ]
 }

@@ -24,7 +24,11 @@
 #include <QtCore/QStringList>
 #include <QtCore/QJsonArray>
 
+QGC_LOGGING_CATEGORY(SimpleItemLog, "SimpleItemLog")
+
 FactMetaData* SimpleMissionItem::_altitudeMetaData =        nullptr;
+FactMetaData* SimpleMissionItem::_waterAmountMetaData =     nullptr;
+
 FactMetaData* SimpleMissionItem::_commandMetaData =         nullptr;
 FactMetaData* SimpleMissionItem::_defaultParamMetaData =    nullptr;
 FactMetaData* SimpleMissionItem::_frameMetaData =           nullptr;
@@ -97,6 +101,15 @@ SimpleMissionItem::SimpleMissionItem(PlanMasterController* masterController, boo
     _altitudeFact.setRawValue(specifiesAltitude() ? _missionItem._param7Fact.rawValue() : qQNaN());
     _amslAltAboveTerrainFact.setRawValue(qQNaN());
 
+    //MODIFY for SPOT mission
+    // Initialize _waterAmountFact from param3 if command is 42702
+    if (_missionItem.command() == 42702) {
+        _waterAmountFact.setRawValue(_missionItem.param3());
+    } else {
+        _waterAmountFact.setRawValue(0.0); // Or qQNaN() if preferred for non-applicable items
+    }
+    //END Modify
+    
     // In flyView we skip some of the intialization to save memory
     if (!_flyView) {
         _setupMetaData();
@@ -129,6 +142,8 @@ void SimpleMissionItem::_connectSignals(void)
     connect(this,                               &SimpleMissionItem::altitudeModeChanged,    this, &SimpleMissionItem::_setDirty);
 
     connect(&_altitudeFact,                     &Fact::valueChanged,                        this, &SimpleMissionItem::_altitudeChanged);
+    connect(&_waterAmountFact,                  &Fact::valueChanged,                        this, &SimpleMissionItem::_setDirty);
+
     connect(this,                               &SimpleMissionItem::altitudeModeChanged,    this, &SimpleMissionItem::_altitudeModeChanged);
     connect(this,                               &SimpleMissionItem::terrainAltitudeChanged, this, &SimpleMissionItem::_terrainAltChanged);
 
@@ -242,6 +257,20 @@ void SimpleMissionItem::_setupMetaData(void)
     _missionItem._frameFact.setMetaData(_frameMetaData);
     _altitudeFact.setMetaData(_altitudeMetaData);
     _amslAltAboveTerrainFact.setMetaData(_altitudeMetaData);
+
+    //MODIFY for Water Amount param3
+    if (!_waterAmountMetaData) {
+        _waterAmountMetaData = new FactMetaData(FactMetaData::valueTypeDouble);
+        _waterAmountMetaData->setName("WaterAmount");
+        _waterAmountMetaData->setShortDescription("Water amount per tree");
+        _waterAmountMetaData->setRawUnits("ml/tree");
+        _waterAmountMetaData->setDecimalPlaces(2);
+        _waterAmountMetaData->setRawIncrement(1);
+    }
+    _waterAmountFact.setMetaData(_waterAmountMetaData);
+    _waterAmountFact.setRawValue(0.0); // Or load from param3 if available
+
+    //END Modify   
 }
 
 SimpleMissionItem::~SimpleMissionItem()
@@ -250,12 +279,22 @@ SimpleMissionItem::~SimpleMissionItem()
 
 void SimpleMissionItem::save(QJsonArray&  missionItems)
 {
+    qCDebug(SimpleItemLog) << "BEFORE_________________________waterAmountFact value:" << _waterAmountFact.rawValue().toDouble();
     QList<MissionItem*> items;
 
     appendMissionItems(items, this);
 
     for (int i=0; i<items.count(); i++) {
-        MissionItem* item = items[i];
+        MissionItem* item = items[i];   
+
+        if (item->command() == 42702) {
+            double waterAmountValue = this->_waterAmountFact.rawValue().toDouble();
+            // '_waterAmountFact' is a member of 'this' SimpleMissionItem instance.
+            // 'item' is the MissionItem object that will be saved.
+            item->setParam3(waterAmountValue);
+            qCDebug(SimpleItemLog) << "Saving________________Got SCRIPT_TIME in SimpleItem, param3():" << item->param3() << "_waterAmountFact value:" << waterAmountValue;
+        }
+
         QJsonObject saveObject;
         item->save(saveObject);
         if (i == 0) {
@@ -294,7 +333,7 @@ bool SimpleMissionItem::load(const QJsonObject& json, int sequenceNumber, QStrin
     if (!_missionItem.load(json, sequenceNumber, errorString)) {
         return false;
     }
-
+    //qCDebug(SimpleItemLog) << "BEFORE_________________________param3 value:" << _missionItem.param3();
     if (specifiesAltitude()) {
         if (json.contains(_jsonAltitudeModeKey) || json.contains(_jsonAltitudeKey) || json.contains(_jsonAMSLAltAboveTerrainKey)) {
             QList<JsonHelper::KeyValidateInfo> keyInfoList = {
@@ -309,12 +348,23 @@ bool SimpleMissionItem::load(const QJsonObject& json, int sequenceNumber, QStrin
             _altitudeMode = (QGroundControlQmlGlobal::AltMode)(int)json[_jsonAltitudeModeKey].toDouble();
             _altitudeFact.setRawValue(JsonHelper::possibleNaNJsonValue(json[_jsonAltitudeKey]));
             _amslAltAboveTerrainFact.setRawValue(JsonHelper::possibleNaNJsonValue(json[_jsonAltitudeKey]));
+            qCDebug(SimpleItemLog) << "Loading no Altitude param found, declaring global alt in SimpleItem";
+
         } else {
             _altitudeMode = _missionItem.relativeAltitude() ? QGroundControlQmlGlobal::AltitudeModeRelative : QGroundControlQmlGlobal::AltitudeModeAbsolute;
             _altitudeFact.setRawValue(_missionItem._param7Fact.rawValue());
             _amslAltAboveTerrainFact.setRawValue(qQNaN());
+            qCDebug(SimpleItemLog) << "Loading contains Altitude param in SimpleItem";
         }
     }
+    //MODIFY for SPOT missions
+    if (_missionItem.command() == 42702) {
+        _waterAmountFact.setRawValue(_missionItem.param3());
+        qCDebug(SimpleItemLog) << "_______________________________Got SCRIPT_TIME in SimpleItem, missionItem.param3():" << _missionItem.param3() << "_waterAmountFact value:" << _waterAmountFact.rawValue().toDouble();
+    } else {
+        _waterAmountFact.setRawValue(0.0); // Or qQNaN()
+    }
+    //END Modify
 
     _connectSignals();
     _updateOptionalSections();
@@ -323,6 +373,24 @@ bool SimpleMissionItem::load(const QJsonObject& json, int sequenceNumber, QStrin
 
     return true;
 }
+//MODIFY for SPOT mission settings
+/*void SimpleMissionItem::_waterAmountFactChanged(void)
+{
+    double newAmount = _waterAmountFact.rawValue().toDouble();
+
+    // Update all other SCRIPT_TIME items
+    for (int i = 0; i < _visualItems->count(); ++i) {
+        SimpleMissionItem* item = qobject_cast<SimpleMissionItem*>(_visualItems->get(i));
+        if (item && item->command() == SCRIPT_TIME) {
+            item->setParam3(newAmount);
+        }
+    }
+}
+void SimpleMissionItem::setParam3(double value)
+{
+    _missionItem._param3Fact.setRawValue(value);
+}*/
+//END modify
 
 bool SimpleMissionItem::isStandaloneCoordinate(void) const
 {
@@ -406,7 +474,8 @@ QString SimpleMissionItem::abbreviation() const
 void SimpleMissionItem::_rebuildTextFieldFacts(void)
 {
     _textFieldFacts.clear();
-    
+    double newAmount = _waterAmountFact.rawValue().toDouble();
+
     if (rawEdit()) {
         _missionItem._param1Fact.setName("Param1");
         _missionItem._param1Fact.setMetaData(_defaultParamMetaData);
@@ -432,6 +501,7 @@ void SimpleMissionItem::_rebuildTextFieldFacts(void)
     } else {
         _ignoreDirtyChangeSignals = true;
 
+        qCDebug(SimpleItemLog) << "Rebuilding TextFieldFacts";
         MAV_CMD command;
         if (_homePositionSpecialCase) {
             command = MAV_CMD_NAV_LAST;
@@ -460,11 +530,19 @@ void SimpleMissionItem::_rebuildTextFieldFacts(void)
                     paramMetaData->setRawMin(paramInfo->min());
                     paramMetaData->setRawMax(paramInfo->max());
                     paramFact->setMetaData(paramMetaData);
+                    
+                    //MODIFY for SPOT parameter settings
+                    // ✅ If this is 42702 (SCRIPT_TIME) and param3, override value with _waterAmountFact
+                    if (command == 42702 && i == 3) {
+                        paramFact->setRawValue(_waterAmountFact.rawValue().toDouble());
+                        qCDebug(SimpleItemLog) << "Rebuilding TextField_______________________________param3Fact:" << paramFact << "_waterAmountFact value:" << _waterAmountFact.rawValue().toDouble();
+                    }//END Modify
+                    
                     _textFieldFacts.append(paramFact);
                 }
             }
         }
-
+        //qCDebug(SimpleItemLog) << "Rebuilding TextFieldFacts";
         _ignoreDirtyChangeSignals = false;
     }
 }
@@ -472,7 +550,8 @@ void SimpleMissionItem::_rebuildTextFieldFacts(void)
 void SimpleMissionItem::_rebuildNaNFacts(void)
 {
     _nanFacts.clear();
-
+    double newAmount = _waterAmountFact.rawValue().toDouble();
+   
     if (!rawEdit()) {
         _ignoreDirtyChangeSignals = true;
 
@@ -511,11 +590,19 @@ void SimpleMissionItem::_rebuildNaNFacts(void)
                     paramMetaData->setRawMin(paramInfo->min());
                     paramMetaData->setRawMax(paramInfo->max());
                     paramFact->setMetaData(paramMetaData);
+
+                    //MODIFY for SPOT parameter settings
+                    // ✅ If this is 42702 (SCRIPT_TIME) and param3, override value with _waterAmountFact
+                    if (command == 42702 && i == 3) {
+                        paramFact->setRawValue(_waterAmountFact.rawValue().toDouble());
+                        qCDebug(SimpleItemLog) << "Rebuilding NaN_______________________________param3Fact:" << paramFact << "_waterAmountFact value:" << _waterAmountFact.rawValue().toDouble();
+                    }//END Modify
+
                     _nanFacts.append(paramFact);
                 }
             }
         }
-
+        //qCDebug(SimpleItemLog) << "Rebuilding NanFacts";
         _ignoreDirtyChangeSignals = false;
     }
 }
@@ -564,6 +651,7 @@ double SimpleMissionItem::loiterRadius() const
 void SimpleMissionItem::_rebuildComboBoxFacts(void)
 {
     _comboboxFacts.clear();
+    double newAmount = _waterAmountFact.rawValue().toDouble();
 
     if (rawEdit()) {
         _comboboxFacts.append(&_missionItem._commandFact);
@@ -597,10 +685,18 @@ void SimpleMissionItem::_rebuildComboBoxFacts(void)
                 paramMetaData->setRawMin(paramInfo->min());
                 paramMetaData->setRawMax(paramInfo->max());
                 paramFact->setMetaData(paramMetaData);
+
+                //MODIFY for SPOT parameter settings
+                // ✅ If this is 42702 (SCRIPT_TIME) and param3, override value with _waterAmountFact
+                if (command == 42702 && i == 3) {
+                    paramFact->setRawValue(_waterAmountFact.rawValue().toDouble());
+                    qCDebug(SimpleItemLog) << "Rebuilding ComboBox_______________________________param3Fact:" << paramFact << "_waterAmountFact value:" << _waterAmountFact.rawValue().toDouble();
+                }//END Modify    
+
                 _comboboxFacts.append(paramFact);
             }
         }
-
+        //qCDebug(SimpleItemLog) << "Rebuilding ComboBoxFacts";
         _ignoreDirtyChangeSignals = false;
     }
 }
@@ -719,6 +815,7 @@ void SimpleMissionItem::_altitudeChanged(void)
 
     if (_altitudeMode != QGroundControlQmlGlobal::AltitudeModeCalcAboveTerrain) {
         _missionItem._param7Fact.setRawValue(_altitudeFact.rawValue());
+
     }
 }
 

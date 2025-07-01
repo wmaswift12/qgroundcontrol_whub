@@ -24,6 +24,17 @@
     "decimalPlaces":    2,
     "default":          50.0
 },
+
+{
+    "name":             "Param1Waypoints",
+    "shortDesc":        "Testing for param1 in Waypoints",
+    "type":             "double",
+    "min":              0.1,
+    "units":            "seconds",
+    "decimalPlaces":    2,
+    "default":          35.6
+},
+
 {
     "name":             "ImageDensity",
     "shortDesc":        "Image desity at surface.",

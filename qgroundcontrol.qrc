@@ -1,4 +1,4 @@
-<RCC>
+	<RCC>
     <qresource prefix="/toolbar">
         <file alias="ArmedIndicator.qml">src/UI/toolbar/ArmedIndicator.qml</file>
         <file alias="RTKGPSIndicator.qml">src/UI/toolbar/RTKGPSIndicator.qml</file>
@@ -356,6 +356,19 @@
         <file alias="DebugWindow.qml">src/UI/preferences/DebugWindow.qml</file>
         <file alias="MockLink.qml">src/UI/preferences/MockLink.qml</file>
         <file alias="MockLinkSettings.qml">src/UI/preferences/MockLinkSettings.qml</file>
+
+        <file alias="QGroundControl/Controls/SprayGrid.qml">src/PlanView/SprayGrid.qml</file>
+        <file alias="QGroundControl/Controls/SprayStyleBlanketItemEditor.qml">src/PlanView/SprayStyleBlanketItemEditor.qml</file>
+        <file alias="QGroundControl/Controls/SprayStyleBlanketItemStats.qml">src/PlanView/SprayStyleBlanketItemStats.qml</file>
+        <file alias="BlanketItemEditor.qml">src/PlanView/BlanketItemEditor.qml</file>
+
+        <file alias="SpotItemEditor.qml">src/PlanView/SpotItemEditor.qml</file>
+        <file alias="QGroundControl/Controls/SprayStyleSpotItemEditor.qml">src/PlanView/SprayStyleSpotItemEditor.qml</file>
+        <file alias="QGroundControl/Controls/SprayStyleSpotItemStats.qml">src/PlanView/SprayStyleSpotItemStats.qml</file>
+        <file alias="QGroundControl/Controls/SpotCalcGrid.qml">src/PlanView/SpotCalcGrid.qml</file>
+
+        <file alias="QGroundControl/FlightDisplay/GuidedCallibrationButton.qml">src/FlightDisplay/GuidedCallibrationButton.qml</file>
+
     </qresource>
     <qresource prefix="/FirstRunPromptDialogs">
         <file alias="UnitsFirstRunPrompt.qml">src/FirstRunPromptDialogs/UnitsFirstRunPrompt.qml</file>
@@ -428,6 +441,15 @@
         <file alias="Viewer3D.SettingsGroup.json">src/Settings/Viewer3D.SettingsGroup.json</file>
         <file alias="GimbalController.SettingsGroup.json">src/Settings/GimbalController.SettingsGroup.json</file>
         <file alias="CameraMetaData.json">src/Camera/CameraMetaData.json</file>
+    
+        <file alias="SprayStyleBlanket.SettingsGroup.json">src/MissionManager/SprayStyleBlanket.SettingsGroup.json</file>
+        <file alias="SprayCalc.FactMetaData.json">src/MissionManager/SprayCalc.FactMetaData.json</file>
+        <file alias="Blanket.SettingsGroup.json">src/MissionManager/Blanket.SettingsGroup.json</file>
+        
+        <file alias="SprayStyleSpot.SettingsGroup.json">src/MissionManager/SprayStyleSpot.SettingsGroup.json</file>
+        <file alias="SpotComplex.SettingsGroup.json">src/MissionManager/SpotComplex.SettingsGroup.json</file>
+        <file alias="SpotCalc.FactMetaData.json">src/MissionManager/SpotCalc.FactMetaData.json</file>
+        
     </qresource>
     <qresource prefix="/MockLink">
         <file alias="APMArduSubMockLink.params">src/Comms/MockLink/APMArduSubMockLink.params</file>

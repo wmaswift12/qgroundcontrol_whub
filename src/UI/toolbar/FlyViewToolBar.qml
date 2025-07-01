@@ -67,6 +67,7 @@ Rectangle {
             id:                     currentButton
             Layout.preferredHeight: viewButtonRow.height
             icon.source:            "/res/QGCLogoFull.svg"
+            //icon.source:            "/res/Alphaswiftlogo.png"
             logo:                   true
             onClicked:              mainWindow.showToolSelectDialog()
         }

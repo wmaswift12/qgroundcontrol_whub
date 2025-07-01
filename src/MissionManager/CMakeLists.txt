@@ -73,6 +73,20 @@ target_sources(${CMAKE_PROJECT_NAME}
         VisualMissionItem.h
         VTOLLandingComplexItem.cc
         VTOLLandingComplexItem.h
+        
+        SprayStyleBlanketItem.cc
+        SprayStyleBlanketItem.h
+        BlanketComplexItem.cc
+        BlanketComplexItem.h
+        SprayCalc.cc
+        SprayCalc.h
+
+        SprayStyleSpotItem.cc
+        SprayStyleSpotItem.h
+        SpotComplexItem.cc
+        SpotComplexItem.h
+        SpotCalc.cc
+        SpotCalc.h
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

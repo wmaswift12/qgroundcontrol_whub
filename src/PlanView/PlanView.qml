@@ -31,7 +31,7 @@ import QGroundControl.UTMSP
 Item {
     id: _root
 
-    property bool planControlColapsed: false
+    property bool   planControlColapsed: false
 
     readonly property int   _decimalPlaces:             8
     readonly property real  _margin:                    ScreenTools.defaultFontPixelHeight * 0.5
@@ -670,7 +670,7 @@ Item {
         Rectangle {
             id:                 rightPanel
             height:             parent.height
-            width:{
+            width:              {
                  if(_utmspEnabled){
                      _rightPanelWidth + ScreenTools.defaultFontPixelWidth * 21.667
                  }
@@ -736,6 +736,30 @@ Item {
                     }
                 }
             }
+            /*Column{
+                id:                 spotColumn
+                anchors.margins:    _margin
+                anchors.left:       parent.left
+                anchors.right:      parent.right
+                anchors.top:        parent.top
+                spacing:            _margin
+
+                ColumnLayout {
+                    id:                     custom2ScriptTimeUI
+                    visible:                missionItem && missionItem.command === 42702
+                    //Layout.fillWidth:       true
+                    //spacing:                _margin
+                    anchors.left:           parent.left
+                    //anchors.right:          parent.right
+                    anchors.topMargin:      ScreenTools.defaultFontPixelHeight
+
+                        SpotItemGrid {
+                            id:                 spot2Grid
+                            width:              parent.width
+                            missionItem:        missionItem
+                        }
+                }
+            }*/
             //-------------------------------------------------------
             // Mission Item Editor
             Item {
@@ -825,7 +849,6 @@ Item {
                 resetRegisterFlightPlan: _resetRegisterFlightPlan
             }
         }
-
         QGCLabel {
             // Elevation provider notice on top of terrain plot
             readonly property string _licenseString: QGroundControl.elevationProviderNotice

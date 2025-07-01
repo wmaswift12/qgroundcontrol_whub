@@ -14,6 +14,8 @@
 #include "MissionItem.h"
 #include "QGroundControlQmlGlobal.h"
 
+Q_DECLARE_LOGGING_CATEGORY(SimpleItemLog)
+
 class SpeedSection;
 class CameraSection;
 
@@ -34,7 +36,10 @@ public:
     Q_PROPERTY(bool             friendlyEditAllowed     READ friendlyEditAllowed                                NOTIFY friendlyEditAllowedChanged)
     Q_PROPERTY(bool             rawEdit                 READ rawEdit                WRITE setRawEdit            NOTIFY rawEditChanged)              ///< true: raw item editing with all params
     Q_PROPERTY(bool             specifiesAltitude       READ specifiesAltitude                                  NOTIFY commandChanged)
+    
     Q_PROPERTY(Fact*            altitude                READ altitude                                           CONSTANT)                           ///< Altitude as specified by altitudeMode. Not necessarily true mission item altitude
+    Q_PROPERTY(Fact*            waterAmount             READ waterAmount                                        CONSTANT) //Spray water Amount
+
     Q_PROPERTY(QGroundControlQmlGlobal::AltMode altitudeMode READ altitudeMode WRITE setAltitudeMode       NOTIFY altitudeModeChanged)
     Q_PROPERTY(Fact*            amslAltAboveTerrain     READ amslAltAboveTerrain                                CONSTANT)                           ///< Actual AMSL altitude for item if altitudeMode == AltitudeAboveTerrain
     Q_PROPERTY(int              command                 READ command                WRITE setCommand            NOTIFY commandChanged)
@@ -72,7 +77,10 @@ public:
     bool            rawEdit             (void) const;
     bool            specifiesAltitude   (void) const;
     QGroundControlQmlGlobal::AltMode altitudeMode(void) const { return _altitudeMode; }
+    
     Fact*           altitude            (void) { return &_altitudeFact; }
+    Fact*           waterAmount         (void) { return &_waterAmountFact; }
+
     Fact*           amslAltAboveTerrain (void) { return &_amslAltAboveTerrainFact; }
     bool            isLoiterItem        (void) const;
     bool            showLoiterRadius    (void) const;
@@ -187,7 +195,10 @@ private:
     Fact                _supportedCommandFact;
 
     QGroundControlQmlGlobal::AltMode    _altitudeMode = QGroundControlQmlGlobal::AltitudeModeRelative;
+    
     Fact                                _altitudeFact;
+    Fact                                _waterAmountFact;
+
     Fact                                _amslAltAboveTerrainFact;
 
     QmlObjectListModel  _textFieldFacts;
@@ -195,6 +206,8 @@ private:
     QmlObjectListModel  _comboboxFacts;
     
     static FactMetaData*    _altitudeMetaData;
+    static FactMetaData*    _waterAmountMetaData;
+
     static FactMetaData*    _commandMetaData;
     static FactMetaData*    _defaultParamMetaData;
     static FactMetaData*    _frameMetaData;

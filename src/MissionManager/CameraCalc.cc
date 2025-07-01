@@ -23,6 +23,9 @@ CameraCalc::CameraCalc(PlanMasterController* masterController, const QString& se
     , _cameraNameFact               (settingsGroup, _metaDataMap[cameraNameName])
     , _valueSetIsDistanceFact       (settingsGroup, _metaDataMap[valueSetIsDistanceName])
     , _distanceToSurfaceFact        (settingsGroup, _metaDataMap[distanceToSurfaceName])
+
+    , _param1WaypointsFact          (settingsGroup, _metaDataMap[param1WaypointsName])
+
     , _imageDensityFact             (settingsGroup, _metaDataMap[imageDensityName])
     , _frontalOverlapFact           (settingsGroup, _metaDataMap[frontalOverlapName])
     , _sideOverlapFact              (settingsGroup, _metaDataMap[sideOverlapName])
@@ -33,6 +36,9 @@ CameraCalc::CameraCalc(PlanMasterController* masterController, const QString& se
 
     connect(&_valueSetIsDistanceFact,       &Fact::valueChanged,                this, &CameraCalc::_setDirty);
     connect(&_distanceToSurfaceFact,        &Fact::valueChanged,                this, &CameraCalc::_setDirty);
+    
+    connect(&_param1WaypointsFact,          &Fact::valueChanged,                this, &CameraCalc::_setDirty);
+
     connect(&_imageDensityFact,             &Fact::valueChanged,                this, &CameraCalc::_setDirty);
     connect(&_frontalOverlapFact,           &Fact::valueChanged,                this, &CameraCalc::_setDirty);
     connect(&_sideOverlapFact,              &Fact::valueChanged,                this, &CameraCalc::_setDirty);
@@ -174,6 +180,9 @@ void CameraCalc::save(QJsonObject& json) const
     json[adjustedFootprintSideName]     = _adjustedFootprintSideFact.rawValue().toDouble();
     json[adjustedFootprintFrontalName]  = _adjustedFootprintFrontalFact.rawValue().toDouble();
     json[distanceToSurfaceName]         = _distanceToSurfaceFact.rawValue().toDouble();
+
+    //json[param1WaypointsName]           = _param1WaypointsFact.rawValue().toDouble();
+
     json[distanceModeName]              = _distanceMode;
     json[cameraNameName]                = _cameraNameFact.rawValue().toString();
 
@@ -183,7 +192,7 @@ void CameraCalc::save(QJsonObject& json) const
         json[imageDensityName] =       _imageDensityFact.rawValue().toDouble();
         json[frontalOverlapName] =     _frontalOverlapFact.rawValue().toDouble();
         json[sideOverlapName] =        _sideOverlapFact.rawValue().toDouble();
-    }
+    } 
 }
 
 bool CameraCalc::load(const QJsonObject& originalJson, bool deprecatedFollowTerrain, QString& errorString, bool forPresets)
@@ -232,6 +241,8 @@ bool CameraCalc::load(const QJsonObject& originalJson, bool deprecatedFollowTerr
         { adjustedFootprintFrontalName,     QJsonValue::Double, true },
         { distanceToSurfaceName,            QJsonValue::Double, true },
         { distanceModeName,                 QJsonValue::Double, true },
+
+        //{ param1WaypointsName,              QJsonValue::Double, true }
     };
     if (!JsonHelper::validateKeys(json, keyInfoList1, errorString)) {
         return false;
@@ -249,6 +260,8 @@ bool CameraCalc::load(const QJsonObject& originalJson, bool deprecatedFollowTerr
     _adjustedFootprintSideFact.setRawValue      (json[adjustedFootprintSideName].toDouble());
     _adjustedFootprintFrontalFact.setRawValue   (json[adjustedFootprintFrontalName].toDouble());
     _distanceToSurfaceFact.setRawValue          (json[distanceToSurfaceName].toDouble());
+
+    //_param1WaypointsFact.setRawValue            (json[param1WaypointsName].toDouble());
 
     if (!isManualCamera()) {
         QList<JsonHelper::KeyValidateInfo> keyInfoList2 = {
