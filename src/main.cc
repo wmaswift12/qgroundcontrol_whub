@@ -9,7 +9,13 @@
 
 #include <QtQuick/QQuickWindow>
 #include <QtWidgets/QApplication>
+
+#ifdef _WIN32
+#include <io.h>
+#define access _access
+#else
 #include <unistd.h>
+#endif
 
 #ifdef Q_OS_MACOS
     #include <QtCore/QProcessEnvironment>
