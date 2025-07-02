@@ -670,8 +670,7 @@ void Vehicle::_handleCameraFeedback(const mavlink_message_t& message)
 }
 #endif
 //MODIFY to read VOLUME sprayed
-void Vehicle::_handleNamedValueFloat(mavlink_message_t& message)
-{
+void Vehicle::_handleNamedValueFloat(const mavlink_message_t& message) {
     // Declare a structure to hold the decoded message data
     mavlink_named_value_float_t namedValueFloat;
 
