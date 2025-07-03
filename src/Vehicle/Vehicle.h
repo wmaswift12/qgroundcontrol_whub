@@ -285,6 +285,12 @@ public:
 
     Q_PROPERTY(bool     mavlinkSigning              READ mavlinkSigning             NOTIFY mavlinkSigningChanged)
 
+    //MODIFY for tunnel Messages from STM32
+    Q_PROPERTY(QVariantMap          namedValues     READ namedValues                NOTIFY namedValuesChanged)
+    
+    QVariantMap                     namedValues     ()   const  { return _namedValues; }
+    //END Modify
+
     /// Resets link status counters
     Q_INVOKABLE void resetCounters  ();
 
@@ -875,6 +881,10 @@ signals:
     void vehicleUIDChanged              ();
     void loadProgressChanged            (float value);
 
+    //MODIFY to emit signal of tunnel messages from STM32
+    void namedValuesChanged             ();
+    //END Modify
+
     /// New RC channel values coming from RC_CHANNELS message
     ///     @param channelCount Number of available channels, maxRcChannels max
     ///     @param pwmValues -1 signals channel not available
@@ -966,6 +976,13 @@ private:
     void _handleFenceStatus             (const mavlink_message_t& message);
     void _handleNamedValueFloat(const mavlink_message_t& message);
     void _handleEvent(uint8_t comp_id, std::unique_ptr<events::parser::ParsedEvent> event);
+    
+    //MODIFY for tunnel Messages from STM32
+    void _handleTunnelMessage           (const mavlink_message_t& message);   //MODIFY for tunnel messages VOLUME Sprayed in NamedFloat
+    
+    QVariantMap _namedValues;
+    //END Modify
+
     // ArduPilot dialect messages
 #if !defined(QGC_NO_ARDUPILOT_DIALECT)
     void _handleCameraFeedback          (const mavlink_message_t& message);

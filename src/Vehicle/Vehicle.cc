@@ -76,6 +76,8 @@ QGC_LOGGING_CATEGORY(VehicleLog, "VehicleLog")
 #define SET_HOME_TERRAIN_ALT_MAX 10000
 #define SET_HOME_TERRAIN_ALT_MIN -500
 
+#define SPRAY_VOLUME_TUNNEL_TYPE 22
+
 const QString guided_mode_not_supported_by_vehicle = QObject::tr("Guided mode not supported by Vehicle.");
 
 // Standard connected vehicle
@@ -589,8 +591,8 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
     case MAVLINK_MSG_ID_FENCE_STATUS:
         _handleFenceStatus(message);
         break;
-    case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
-        _handleNamedValueFloat(message);
+    case MAVLINK_MSG_ID_TUNNEL:
+        _handleTunnelMessage(message);
         break;
 
     case MAVLINK_MSG_ID_EVENT:
@@ -670,42 +672,64 @@ void Vehicle::_handleCameraFeedback(const mavlink_message_t& message)
 }
 #endif
 //MODIFY to read VOLUME sprayed
-void Vehicle::_handleNamedValueFloat(const mavlink_message_t& message) {
-    // Declare a structure to hold the decoded message data
-    mavlink_named_value_float_t namedValueFloat;
+void Vehicle::_handleTunnelMessage(const mavlink_message_t& message)
+{
+    mavlink_tunnel_t tunnel; // Declare a structure to hold the decoded tunnel message data
+    mavlink_msg_tunnel_decode(&message, &tunnel); // Decode the MAVLink message into the structure
 
-    // Decode the MAVLink message into the structure
-    mavlink_msg_named_value_float_decode(&message, &namedValueFloat);
+    // Check if the payload type matches our custom type
+    if (tunnel.payload_type == SPRAY_VOLUME_TUNNEL_TYPE) {
+        // We expect the payload format: '22'
+        // [1 byte: name_length] [name_bytes] [4 bytes: float_value]
 
-    // Extract the timestamp (time_boot_ms)
-    quint32 timeBootMs = namedValueFloat.time_boot_ms;
+        const uint8_t* payloadData = tunnel.payload;
+        uint16_t payloadLength = tunnel.payload_length;
+        uint16_t offset = 0;
 
-    // Extract the name. The 'name' field in mavlink_named_value_float_t
-    // is a char array of size 10. It's crucial to handle it as a null-terminated string.
-    // QGC often uses QString for string manipulation.
-    QString name = QString::fromUtf8(namedValueFloat.name, sizeof(namedValueFloat.name));
-    // Remove any trailing null characters or padding bytes from the fixed-size buffer
-    name = name.trimmed();
+        // 1. Extract name_length
+        if (payloadLength < 1) {
+            qWarning() << "Received SPRAY_VOLUME_TUNNEL_TYPE with insufficient payload length for name_length.";
+            return; // Not enough data for even the length byte
+        }
+        uint8_t name_len = payloadData[offset++];
 
-    // Extract the value
-    float value = namedValueFloat.value;
+        // 2. Extract name bytes
+        if (payloadLength < offset + name_len) {
+            qWarning() << "Received SPRAY_VOLUME_TUNNEL_TYPE with insufficient payload length for name.";
+            return; // Not enough data for the name
+        }
+        // Use QByteArray::fromRawData for efficient string conversion without copying
+        // Note: fromRawData does NOT copy, so payloadData must remain valid.
+        // Since tunnel.payload is part of the message buffer, it should be fine within this function.
+        QString name = QString::fromUtf8(reinterpret_cast<const char*>(payloadData + offset), name_len);
+        offset += name_len;
 
-    // --- Process the received data ---
-    // Here you would typically:
-    // 1. Log the value
-    // 2. Update a UI element
-    // 3. Store it in a data model associated with the vehicle
-    // 4. Trigger an event or signal for other parts of QGC to react to
+        // 3. Extract float value
+        if (payloadLength < offset + sizeof(float)) {
+            qWarning() << "Received SPRAY_VOLUME_TUNNEL_TYPE with insufficient payload length for float value.";
+            return; // Not enough data for the float
+        }
+        float value;
+        // Use memcpy to safely copy the raw bytes of the float
+        memcpy(&value, payloadData + offset, sizeof(float));
+        // offset += sizeof(float); // Not strictly needed if we're done with the payload
 
-    qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
-             << "Received NAMED_VALUE_FLOAT:"
-             << "Time (ms):" << timeBootMs
-             << "Name:" << name
-             << "Value:" << value;
+        // --- Process the extracted data ---
+        qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
+                 << "Received TUNNEL (SPRAY_VOLUME_TUNNEL_TYPE): \n"
+                 << "  Name:" << name << "\n"
+                 << "  Value:" << value;
 
-    // Example: If you have a QMap or QHash to store these values dynamically
-    // this->_customFloatValues.insert(name, value);
-    // emit this->customValueUpdated(name, value); // Emit a signal for UI updates
+        // Update the QVariantMap and emit signal for QML UI
+        if (!_namedValues.contains(name) || _namedValues.value(name).toFloat() != value) {
+            _namedValues[name] = value; // Assign float, QVariant handles conversion
+            emit namedValuesChanged(); // Signal to QML that data has updated
+        }
+    } else {
+        // Handle other tunnel payload types or log unknown ones
+        qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
+                 << "Received TUNNEL message with unknown payload type:" << tunnel.payload_type;
+    }
 }
 //END Modify
 
