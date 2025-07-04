@@ -16,6 +16,6 @@ import QGroundControl.MultiVehicleManager
 import QGroundControl.ScreenTools
 import QGroundControl.Palette
 
-VolumeDisplay {
+SprayFlowrateDisplay {
     property bool showIndicator: true
 }

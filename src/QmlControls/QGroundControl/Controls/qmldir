@@ -139,5 +139,5 @@ SprayStyleSpotItemEditor		        1.0 SprayStyleSpotItemEditor.qml
 SprayStyleSpotItemStats           	    1.0 SprayStyleSpotItemStats.qml
 SpotCalcGrid                            1.0 SpotCalcGrid.qml
 
-VolumeDisplay                           1.0 VolumeDisplay.qml
+SprayFlowrateDisplay                    1.0 SprayFlowrateDisplay.qml
 

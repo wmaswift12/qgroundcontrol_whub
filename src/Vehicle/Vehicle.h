@@ -286,9 +286,11 @@ public:
     Q_PROPERTY(bool     mavlinkSigning              READ mavlinkSigning             NOTIFY mavlinkSigningChanged)
 
     //MODIFY for tunnel Messages from STM32
-    Q_PROPERTY(QVariantMap          namedValues     READ namedValues                NOTIFY namedValuesChanged)
-    
-    QVariantMap                     namedValues     ()   const  { return _namedValues; }
+    Q_PROPERTY(QVariantMap          flowRates     READ flowRates                NOTIFY flowRatesChanged)
+    Q_PROPERTY(QVariantMap          volumeOut     READ volumeOut                NOTIFY volumeOutChanged)
+
+    QVariantMap                     flowRates     ()   const  { return _flowRates; }
+    QVariantMap                     volumeOut     ()   const  { return _volumeOut; }
     //END Modify
 
     /// Resets link status counters
@@ -882,7 +884,8 @@ signals:
     void loadProgressChanged            (float value);
 
     //MODIFY to emit signal of tunnel messages from STM32
-    void namedValuesChanged             ();
+    void flowRatesChanged             ();
+    void volumeOutChanged             ();
     //END Modify
 
     /// New RC channel values coming from RC_CHANNELS message
@@ -980,7 +983,8 @@ private:
     //MODIFY for tunnel Messages from STM32
     void _handleTunnelMessage           (const mavlink_message_t& message);   //MODIFY for tunnel messages VOLUME Sprayed in NamedFloat
     
-    QVariantMap _namedValues;
+    QVariantMap _flowRates;
+    QVariantMap _volumeOut;
     //END Modify
 
     // ArduPilot dialect messages

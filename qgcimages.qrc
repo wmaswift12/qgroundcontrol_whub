@@ -216,5 +216,6 @@
         <file alias="Viewer3D/City3DMapIcon.svg">src/Viewer3D/Images/city_3d_map_icon.svg</file>
         
         <file alias="Spray.svg">src/UI/toolbar/Images/Spray.svg</file>
+        <file alias="Volume.svg">src/UI/toolbar/Images/Volume.svg</file>
     </qresource>
 </RCC>
