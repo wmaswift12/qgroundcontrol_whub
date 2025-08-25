@@ -33,12 +33,11 @@ CPMAddPackage(
     GIT_TAG master
 )
 
-set_source_files_properties(${sdl_gamecontrollerdb_SOURCE_DIR}/gamecontrollerdb.txt PROPERTIES QT_RESOURCE_ALIAS gamecontrollerdb.txt)
-
-qt_add_resources(${CMAKE_PROJECT_NAME} "gamecontrollerdb.txt"
-    PREFIX "/db/mapping/joystick"
-    FILES ${sdl_gamecontrollerdb_SOURCE_DIR}/gamecontrollerdb.txt
-)
+#set_source_files_properties(${sdl_gamecontrollerdb_SOURCE_DIR}/gamecontrollerdb.txt PROPERTIES QT_RESOURCE_ALIAS gamecontrollerdb.txt)
+#qt_add_resources(${CMAKE_PROJECT_NAME} "gamecontrollerdb.txt"
+#    PREFIX "/db/mapping/joystick"
+#    FILES ${sdl_gamecontrollerdb_SOURCE_DIR}/gamecontrollerdb.txt
+#)
 
 #===========================================================================#
 

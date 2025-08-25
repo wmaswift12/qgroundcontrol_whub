@@ -372,6 +372,7 @@
         <file alias="QGroundControl/FlightDisplay/GuidedCallibrationButton.qml">src/FlightDisplay/GuidedCallibrationButton.qml</file>
         <file alias="QGroundControl/Controls/SprayFlowrateDisplay.qml">src/UI/toolbar/SprayFlowrateDisplay.qml</file>
         <file alias="QGroundControl/Controls/VolumeDisplay.qml">src/UI/toolbar/VolumeDisplay.qml</file>
+        <file alias="QGroundControl/Controls/SprayDistance.qml">src/UI/toolbar/SprayDistance.qml</file>
     </qresource>
     <qresource prefix="/FirstRunPromptDialogs">
         <file alias="UnitsFirstRunPrompt.qml">src/FirstRunPromptDialogs/UnitsFirstRunPrompt.qml</file>

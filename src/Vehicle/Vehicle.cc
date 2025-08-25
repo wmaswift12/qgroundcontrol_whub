@@ -57,6 +57,7 @@
 #include "GimbalController.h"
 #include "MavlinkSettings.h"
 #include "APM.h"
+#include <QDateTime>
 
 #ifdef QGC_UTM_ADAPTER
 #include "UTMSPVehicle.h"
@@ -76,8 +77,10 @@ QGC_LOGGING_CATEGORY(VehicleLog, "VehicleLog")
 #define SET_HOME_TERRAIN_ALT_MAX 10000
 #define SET_HOME_TERRAIN_ALT_MIN -500
 
+// Custom Tunnel Types for Spray System
 #define FLOWRATE_TUNNEL_TYPE 221
 #define VOLUME_TUNNEL_TYPE 222
+#define SPRAYDIST_TUNNEL_TYPE 223
 
 const QString guided_mode_not_supported_by_vehicle = QObject::tr("Guided mode not supported by Vehicle.");
 
@@ -116,6 +119,11 @@ Vehicle::Vehicle(LinkInterface*             link,
     , _rpmFactGroup                 (this)
     , _terrainFactGroup             (this)
     , _terrainProtocolHandler       (new TerrainProtocolHandler(this, &_terrainFactGroup, this))
+    
+    , _sprayVolumeFact (0, "sprayVolume", FactMetaData::valueTypeDouble)
+    , _flowRateFact    (0, "flowRate", FactMetaData::valueTypeDouble)
+    , _sprayAreaFact   (0, "sprayArea", FactMetaData::valueTypeDouble)
+    , _sprayWidthFact  (0, "sprayWidth", FactMetaData::valueTypeDouble)
 {
     connect(JoystickManager::instance(), &JoystickManager::activeJoystickChanged, this, &Vehicle::_loadJoystickSettings);
     connect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged, this, &Vehicle::_activeVehicleChanged);
@@ -139,6 +147,10 @@ Vehicle::Vehicle(LinkInterface*             link,
     connect(this, &Vehicle::remoteControlRSSIChanged,   this, &Vehicle::_remoteControlRSSIChanged);
 
     _commonInit();
+
+    _addFact(&_sprayVolumeFact, "sprayVolume");
+    _addFact(&_flowRateFact, "flowRate");
+    _addFact(&_sprayAreaFact, "sprayArea");
 
     _vehicleLinkManager->_addLink(link);
 
@@ -172,7 +184,7 @@ Vehicle::Vehicle(LinkInterface*             link,
         _initialConnectStateMachine->start();
     }
 
-    _firmwarePlugin->initializeVehicle(this);
+    _firmwarePlugin->initializeVehicle(this);  
     for(auto& factName: factNames()) {
         _firmwarePlugin->adjustMetaData(vehicleType, getFact(factName)->metaData());
     }
@@ -192,6 +204,11 @@ Vehicle::Vehicle(LinkInterface*             link,
 
     // Start timer to limit altitude above terrain queries
     _altitudeAboveTerrQueryTimer.restart();
+
+    _sprayVolumeFact.setRawValue(0.0);
+    _flowRateFact.setRawValue(0.0);
+    _sprayAreaFact.setRawValue(0.0);
+    _sprayWidthFact.setRawValue(0.0);
 }
 
 // Disconnected Vehicle for offline editing
@@ -592,7 +609,7 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
     case MAVLINK_MSG_ID_FENCE_STATUS:
         _handleFenceStatus(message);
         break;
-    case MAVLINK_MSG_ID_TUNNEL:
+    case MAVLINK_MSG_ID_TUNNEL: 
         _handleTunnelMessage(message);
         break;
 
@@ -672,110 +689,152 @@ void Vehicle::_handleCameraFeedback(const mavlink_message_t& message)
     _cameraTriggerPoints.append(new QGCQGeoCoordinate(imageCoordinate, this));
 }
 #endif
-//MODIFY to read FLOWRATE & VOLUME sprayed
+
 void Vehicle::_handleTunnelMessage(const mavlink_message_t& message)
 {
+    qDebug() << "!!!!!!!!!! VEHICLE MAVLINK MESSAGE RECEIVED !!!!!!!!!_handleTunnelMessage";
+
     mavlink_tunnel_t tunnel; // Declare a structure to hold the decoded tunnel message data
     mavlink_msg_tunnel_decode(&message, &tunnel); // Decode the MAVLink message into the structure
 
     // Check if the payload type matches our custom type
     if (tunnel.payload_type == FLOWRATE_TUNNEL_TYPE) {
-        // payload format: '221' for Flowrate
-        // [1 byte: name_length] [name_bytes] [4 bytes: float_value]
-        
+    // Payload format: [1 byte: name_length] [name_bytes] [4 bytes: float_value]
+
         const uint8_t* payloadData = tunnel.payload;
         uint16_t payloadLength = tunnel.payload_length;
         uint16_t offset = 0;
 
-        // 1. Extract name_length
+
+        // --- Step 1: Extract name_length ---
         if (payloadLength < 1) {
-            qWarning() << "Received FLOWRATE_TUNNEL_TYPE with insufficient payload length for name_length.";
-            return; // Not enough data for even the length byte
+        qWarning() << "FLOWRATE_TUNNEL_TYPE: insufficient payload (missing name_length).";
+        return;
         }
         uint8_t name_len = payloadData[offset++];
 
-        // 2. Extract name bytes
+
+        // --- Step 2: Extract name string ---
         if (payloadLength < offset + name_len) {
-            qWarning() << "Received FLOWRATE_TUNNEL_TYPE with insufficient payload length for name.";
-            return; // Not enough data for the name
+        qWarning() << "FLOWRATE_TUNNEL_TYPE: insufficient payload (missing name).";
+        return;
         }
-        // Since tunnel.payload is part of the message buffer, it should be fine within this function.
         QString name = QString::fromUtf8(reinterpret_cast<const char*>(payloadData + offset), name_len);
         offset += name_len;
 
-        // 3. Extract float value
+
+        // --- Step 3: Extract float value ---
         if (payloadLength < offset + sizeof(float)) {
-            qWarning() << "Received FLOWRATE_TUNNEL_TYPE with insufficient payload length for float value.";
-            return; // Not enough data for the float
+        qWarning() << "FLOWRATE_TUNNEL_TYPE: insufficient payload (missing float value).";
+        return;
         }
-        float value;
-        // Use memcpy to safely copy the raw bytes of the float
+        float value = 0.0f;
         memcpy(&value, payloadData + offset, sizeof(float));
-        // offset += sizeof(float); // Not strictly needed if we're done with the payload
+
 
         // --- Process the extracted data ---
         qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
-                 << "Received TUNNEL (FLOWRATE_TUNNEL_TYPE): \n"
-                 << "  Name:" << name << "\n"
-                 << "  Value:" << value;
+        << "Received TUNNEL (FLOWRATE_TUNNEL_TYPE):"
+        << "Name:" << name << "Value:" << value;
 
-        // Update the QVariantMap and emit signal for QML UI
-        if (!_flowRates.contains(name) || _flowRates.value(name).toFloat() != value) {
-            _flowRates[name] = value; // Assign float, QVariant handles conversion
-            emit flowRatesChanged(); // Signal to QML that data has updated
-        }
+
+        // Update flow rate map for QML UI
+        _flowRates[name] = value;
+        emit flowRatesChanged();
+
+
+        // --- Also update the Fact object for direct QML binding ---
+        _flowRateFact.setRawValue(value);
     } else if (tunnel.payload_type == VOLUME_TUNNEL_TYPE) {
-        // payload format: '222' for Volume
-        // [1 byte: name_length] [name_bytes] [4 bytes: float_value]
+    // Payload format: [1 byte: name_length] [name_bytes] [4 bytes: float_value]
 
         const uint8_t* payloadData = tunnel.payload;
         uint16_t payloadLength = tunnel.payload_length;
         uint16_t offset = 0;
 
-        // 1. Extract name_length
+        // --- Step 1: Extract name_length ---
         if (payloadLength < 1) {
-            qWarning() << "Received VOLUME_TUNNEL_TYPE with insufficient payload length for name_length.";
-            return; // Not enough data for even the length byte
+        qWarning() << "VOLUME_TUNNEL_TYPE: insufficient payload (missing name_length).";
+        return;
         }
         uint8_t name_len = payloadData[offset++];
 
-        // 2. Extract name bytes
+        // --- Step 2: Extract name string ---
         if (payloadLength < offset + name_len) {
-            qWarning() << "Received VOLUME_TUNNEL_TYPE with insufficient payload length for name.";
-            return; // Not enough data for the name
+        qWarning() << "VOLUME_TUNNEL_TYPE: insufficient payload (missing name).";
+        return;
         }
-        // Since tunnel.payload is part of the message buffer, it should be fine within this function.
         QString name = QString::fromUtf8(reinterpret_cast<const char*>(payloadData + offset), name_len);
         offset += name_len;
 
-        // 3. Extract float value
+        // --- Step 3: Extract float value ---
         if (payloadLength < offset + sizeof(float)) {
-            qWarning() << "Received VOLUME_TUNNEL_TYPE with insufficient payload length for float value.";
-            return; // Not enough data for the float
+        qWarning() << "VOLUME_TUNNEL_TYPE: insufficient payload (missing float value).";
+        return;
         }
-        float value;
-        // Use memcpy to safely copy the raw bytes of the float
+        float value = 0.0f;
         memcpy(&value, payloadData + offset, sizeof(float));
-        // offset += sizeof(float); // Not strictly needed if we're done with the payload
 
         // --- Process the extracted data ---
         qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
-                 << "Received TUNNEL (VOLUME_TUNNEL_TYPE): \n"
-                 << "  Name:" << name << "\n"
-                 << "  Value:" << value;
+        << "Received TUNNEL (VOLUME_TUNNEL_TYPE):"
+        << "Name:" << name << "Value:" << value;
 
-        // Update the QVariantMap and emit signal for QML UI
-        if (!_volumeOut.contains(name) || _volumeOut.value(name).toFloat() != value) {
-            _volumeOut[name] = value; // Assign float, QVariant handles conversion
-            emit volumeOutChanged(); // Signal to QML that data has updated
+        // Update volume map for QML UI
+        _volumeOut[name] = value;
+        emit volumeOutChanged();
+
+        // --- Also update the Fact object for direct QML binding ---
+        _sprayVolumeFact.setRawValue(value);
+
+        } else if (tunnel.payload_type == SPRAYDIST_TUNNEL_TYPE) {
+        // Payload format: [1 byte: name_length] [name_bytes] [4 bytes: float_value]
+        double sprayWidth = _sprayWidthFact.rawValue().toDouble();
+
+        const uint8_t* payloadData = tunnel.payload;
+        uint16_t payloadLength = tunnel.payload_length;
+        uint16_t offset = 0;
+
+        // --- Step 1: Extract name_length ---
+        if (payloadLength < 1) {
+            qWarning() << "SPRAYDIST_TUNNEL_TYPE: insufficient payload (missing name_length).";
+            return;
         }
+        uint8_t name_len = payloadData[offset++];
+
+        // --- Step 2: Extract name string ---
+        if (payloadLength < offset + name_len) {
+            qWarning() << "SPRAYDIST_TUNNEL_TYPE: insufficient payload (missing name).";
+            return;
+        }
+        QString name = QString::fromUtf8(reinterpret_cast<const char*>(payloadData + offset), name_len);
+        offset += name_len;
+
+        // --- Step 3: Extract float value ---
+        if (payloadLength < offset + sizeof(float)) {
+            qWarning() << "SPRAYDIST_TUNNEL_TYPE: insufficient payload (missing float value).";
+            return;
+        }
+        float value = 0.0f;
+        memcpy(&value, payloadData + offset, sizeof(float));
+
+        // --- Process the extracted data ---
+        qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
+                << "Received TUNNEL (SPRAYDIST_TUNNEL_TYPE):"
+                << "Name:" << name << "Area:" << value;
+
+        // --- Update QML map ---
+        _sprayArea[name] = value;
+        emit sprayAreaChanged();
+
+        // --- Update Fact (single value) ---
+        _sprayAreaFact.setRawValue(value);
     } else {
         // Handle other tunnel payload types or log unknown ones
         qDebug() << QDateTime::currentDateTime().toString("hh:mm:ss.zzz")
                  << "Received TUNNEL message with unknown payload type:" << tunnel.payload_type;
     }
 }
-//END Modify
 
 void Vehicle::_handleOrbitExecutionStatus(const mavlink_message_t& message)
 {
@@ -1880,6 +1939,9 @@ void Vehicle::_flightTimerStart()
     _flightTimeUpdater.start();
     _flightDistanceFact.setRawValue(0);
     _flightTimeFact.setRawValue(0);
+
+    _flightStartTime = QDateTime::currentDateTime();
+    emit flightStartTimeChanged();
 }
 
 void Vehicle::_flightTimerStop()

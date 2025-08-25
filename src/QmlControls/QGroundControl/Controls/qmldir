@@ -140,4 +140,4 @@ SprayStyleSpotItemStats           	    1.0 SprayStyleSpotItemStats.qml
 SpotCalcGrid                            1.0 SpotCalcGrid.qml
 
 SprayFlowrateDisplay                    1.0 SprayFlowrateDisplay.qml
-
+SprayDistance                           1.0 SprayDistance.qml

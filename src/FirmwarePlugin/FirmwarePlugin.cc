@@ -209,6 +209,7 @@ const QVariantList &FirmwarePlugin::toolIndicators(const Vehicle*)
             
             QVariant::fromValue(QUrl::fromUserInput("qrc:/toolbar/VehicleSprayIndicator.qml")),
             QVariant::fromValue(QUrl::fromUserInput("qrc:/qml/QGroundControl/Controls/VolumeDisplay.qml")),
+            QVariant::fromValue(QUrl::fromUserInput("qrc:/qml/QGroundControl/Controls/SprayDistance.qml")),
         });
     }
 

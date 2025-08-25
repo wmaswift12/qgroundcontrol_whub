@@ -1186,7 +1186,8 @@ void SprayStyleBlanketItem::_appendSprayAreaON(QList<MissionItem*>& items, QObje
                                         scriptTimeout,                              // Interval (none)
                                         literMeter2,                              // Take 1 photo
                                         1,                              // No sequence number specified
-                                        0, 0, 0,      // param 5-7 reserved
+                                        spacing,                        // param 6 = spray_width
+                                        0, 0,                           // param 5-7 reserved
                                         true,                           // autoContinue
                                         false,                          // isCurrentItem
                                         missionItemParent);
@@ -1215,7 +1216,8 @@ void SprayStyleBlanketItem::_appendSprayAreaOFF(QList<MissionItem*>& items, QObj
                                         scriptTimeout,                              // Interval (none)
                                         literMeter2,                              // Take 1 photo
                                         0,                              // No sequence number specified
-                                        0, 0, 0,      // param 5-7 reserved
+                                        spacing,                        // param 5 = spray_width
+                                        0, 0,                           // param 6-7 reserved
                                         true,                           // autoContinue
                                         false,                          // isCurrentItem
                                         missionItemParent);
@@ -1249,7 +1251,7 @@ void SprayStyleBlanketItem::_appendResumeOFF(QList<MissionItem*>& items, QObject
     MissionItem* item = new MissionItem(seqNum++,
                                         MAV_CMD_DO_SET_RESUME_REPEAT_DIST,
                                         mavFrame,
-                                        2, // param1: Hold time in seconds
+                                        3, // param1: Hold time in seconds
                                         0.0,                                         // No acceptance radius specified
                                         0.0,                                         // Pass through waypoint
                                         0,    // Yaw unchanged
@@ -1270,7 +1272,7 @@ void SprayStyleBlanketItem::_appendResumeON(QList<MissionItem*>& items, QObject*
     MissionItem* item = new MissionItem(seqNum++,
                                         MAV_CMD_DO_SET_RESUME_REPEAT_DIST,
                                         mavFrame,
-                                        2, // param1: Hold time in seconds
+                                        3, // param1: Hold time in seconds
                                         0.0,                                         // No acceptance radius specified
                                         0.0,                                         // Pass through waypoint
                                         1,    // Yaw unchanged
@@ -1322,7 +1324,8 @@ void SprayStyleBlanketItem::_appendScriptSprayON(QList<MissionItem*>& items, QOb
                                         scriptTimeout,                              // shutter integration (ignore)
                                         literMeter2,  // Amount water mL
                                         1,                              // state is '1' as ON
-                                        0, 0, 0,                        // param 5-7 unused
+                                        spacing,                        // param 5 = spray_width
+                                        0, 0,                           // param 6-7 unused
                                         true,                           // autoContinue
                                         false,                          // isCurrentItem
                                         missionItemParent);
@@ -1358,7 +1361,8 @@ void SprayStyleBlanketItem::_appendScriptSprayOFF(QList<MissionItem*>& items, QO
                                         scriptTimeout,                              // shutter integration (ignore)
                                         literMeter2,  // Amount water mL
                                         0,                              // state is '0' as OFF
-                                        0, 0, 0,                        // param 5-7 unused
+                                        spacing,                        // param 5 = spray_width
+                                        0, 0,                           // param 6-7 unused
                                         true,                           // autoContinue
                                         false,                          // isCurrentItem
                                         missionItemParent);

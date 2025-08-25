@@ -54,6 +54,7 @@ public:
 
     QGCMapPolygon*  surveyAreaPolygon   (void) { return &_surveyAreaPolygon; }
     SprayCalc*      sprayCalc           (void) { return &_sprayCalc; }
+
     QVariantList    visualTransectPoints(void) { return _visualTransectPoints; }
 
     Fact*           gridAngleFact       (void) { return &_gridAngleFact; }

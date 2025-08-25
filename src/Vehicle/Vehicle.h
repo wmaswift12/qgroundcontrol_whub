@@ -46,6 +46,8 @@
 #include "VehicleWindFactGroup.h"
 #include "GimbalController.h"
 
+#include "SprayCalc.h"
+
 class Actuators;
 class AutoPilotPlugin;
 class Autotune;
@@ -270,6 +272,10 @@ public:
     Q_PROPERTY(QmlObjectListModel*  batteries       READ batteries                  CONSTANT)
     Q_PROPERTY(Actuators*           actuators       READ actuators                  CONSTANT)
     Q_PROPERTY(HealthAndArmingCheckReport* healthAndArmingCheckReport READ healthAndArmingCheckReport CONSTANT)
+    Q_PROPERTY(Fact* flightDistance READ flightDistance CONSTANT)
+    Q_PROPERTY(Fact* flightTime READ flightTime CONSTANT)
+    Q_PROPERTY(QDateTime flightStartTime READ flightStartTime NOTIFY flightStartTimeChanged)
+    Q_PROPERTY(QString flightStartTimeString READ flightStartTimeString NOTIFY flightStartTimeChanged)
 
     Q_PROPERTY(int      firmwareMajorVersion        READ firmwareMajorVersion       NOTIFY firmwareVersionChanged)
     Q_PROPERTY(int      firmwareMinorVersion        READ firmwareMinorVersion       NOTIFY firmwareVersionChanged)
@@ -285,13 +291,13 @@ public:
 
     Q_PROPERTY(bool     mavlinkSigning              READ mavlinkSigning             NOTIFY mavlinkSigningChanged)
 
-    //MODIFY for tunnel Messages from STM32
-    Q_PROPERTY(QVariantMap          flowRates     READ flowRates                NOTIFY flowRatesChanged)
-    Q_PROPERTY(QVariantMap          volumeOut     READ volumeOut                NOTIFY volumeOutChanged)
+    Q_PROPERTY(QVariantMap          flowRates         READ flowRates                NOTIFY flowRatesChanged)
+    Q_PROPERTY(QVariantMap          volumeOut         READ volumeOut                NOTIFY volumeOutChanged)
+    Q_PROPERTY(QVariantMap          sprayArea         READ sprayArea                NOTIFY sprayAreaChanged)
 
-    QVariantMap                     flowRates     ()   const  { return _flowRates; }
-    QVariantMap                     volumeOut     ()   const  { return _volumeOut; }
-    //END Modify
+    QVariantMap                     flowRates         ()   const  { return _flowRates; }
+    QVariantMap                     volumeOut         ()   const  { return _volumeOut; }
+    const QVariantMap&              sprayArea         () const    { return _sprayArea; }
 
     /// Resets link status counters
     Q_INVOKABLE void resetCounters  ();
@@ -613,6 +619,14 @@ public:
     FactGroup* efiFactGroup                 () { return &_efiFactGroup; }
     FactGroup* rpmFactGroup                 () { return &_rpmFactGroup; }
     QmlObjectListModel* batteries           () { return &_batteryFactGroupListModel; }
+    Fact* flightDistance(void) { return &_flightDistanceFact; }
+    Fact* flightTime(void) { return &_flightTimeFact; }
+    QDateTime flightStartTime(void) const { return _flightStartTime; }
+    QString flightStartTimeString(void) const { return _flightStartTime.toString("d/M/yyyy h:mm AP"); }
+    
+    Fact* sprayVolume(void) { return &_sprayVolumeFact; }
+    Fact* flowRate(void)    { return &_flowRateFact;  }
+    Fact* sprayWidth(void) { return &_sprayWidthFact;}
 
     MissionManager*                 missionManager      () { return _missionManager; }
     GeoFenceManager*                geoFenceManager     () { return _geoFenceManager; }
@@ -882,11 +896,12 @@ signals:
     void gitHashChanged                 (QString hash);
     void vehicleUIDChanged              ();
     void loadProgressChanged            (float value);
+    void flightStartTimeChanged();
 
-    //MODIFY to emit signal of tunnel messages from STM32
     void flowRatesChanged             ();
     void volumeOutChanged             ();
-    //END Modify
+    void sprayAreaChanged             ();
+    void sprayWidthChanged            (Fact* fact);
 
     /// New RC channel values coming from RC_CHANNELS message
     ///     @param channelCount Number of available channels, maxRcChannels max
@@ -977,15 +992,17 @@ private:
     void _handleGimbalOrientation       (const mavlink_message_t& message);
     void _handleObstacleDistance        (const mavlink_message_t& message);
     void _handleFenceStatus             (const mavlink_message_t& message);
-    void _handleNamedValueFloat(const mavlink_message_t& message);
     void _handleEvent(uint8_t comp_id, std::unique_ptr<events::parser::ParsedEvent> event);
-    
-    //MODIFY for tunnel Messages from STM32
     void _handleTunnelMessage           (const mavlink_message_t& message);   //MODIFY for tunnel messages VOLUME Sprayed in NamedFloat
     
     QVariantMap _flowRates;
     QVariantMap _volumeOut;
-    //END Modify
+    QVariantMap _sprayArea;
+    
+    Fact _sprayVolumeFact;
+    Fact _flowRateFact;
+    Fact _sprayAreaFact;
+    Fact _sprayWidthFact;
 
     // ArduPilot dialect messages
 #if !defined(QGC_NO_ARDUPILOT_DIALECT)
@@ -1080,6 +1097,8 @@ private:
     static const int    _prearmErrorTimeoutMSecs = 35 * 1000;   ///< Take away prearm error after 35 seconds
 
     bool                _initialPlanRequestComplete = false;
+
+    QDateTime _flightStartTime;
 
     ParameterManager*               _parameterManager               = nullptr;
     ComponentInformationManager*    _componentInformationManager    = nullptr;

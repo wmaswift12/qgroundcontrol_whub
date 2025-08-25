@@ -280,18 +280,28 @@
      planKML.addMission(_controllerVehicle, _visualItems, rgMissionItems);
      deleteParent->deleteLater();
  }
+
+void MissionController::sendItemsToVehicle(Vehicle* vehicle, QmlObjectListModel* visualMissionItems)
+{
+    if (vehicle) {
+        QList<MissionItem*> rgMissionItems;
+
+        _convertToMissionItems(visualMissionItems, rgMissionItems, vehicle);
+        vehicle->missionManager()->writeMissionItems(rgMissionItems);
+    }
+}
  
- void MissionController::sendItemsToVehicle(Vehicle* vehicle, QmlObjectListModel* visualMissionItems)
- {
-     if (vehicle) {
-         QList<MissionItem*> rgMissionItems;
+//  void MissionController::sendItemsToVehicle(Vehicle* vehicle, QmlObjectListModel* visualMissionItems)
+//  {
+//      if (vehicle) {
+//          QList<MissionItem*> rgMissionItems;
  
-         _convertToMissionItems(visualMissionItems, rgMissionItems, vehicle);
+//          _convertToMissionItems(visualMissionItems, rgMissionItems, vehicle);
  
-         // PlanManager takes control of MissionItems so no need to delete
-         vehicle->missionManager()->writeMissionItems(rgMissionItems);
-     }
- }
+//          // PlanManager takes control of MissionItems so no need to delete
+//          vehicle->missionManager()->writeMissionItems(rgMissionItems);
+//      }
+//  }
  
  int MissionController::_nextSequenceNumber(void)
  {

@@ -18,9 +18,26 @@
 #include "QmlObjectListModel.h"
 #include "SettingsManager.h"
 #include "Vehicle.h"
+#include "QGCMAVLink.h"
+#include <mavlink.h>
 
 #include <QtCore/qapplicationstatic.h>
 #include <QtCore/QTimer>
+
+#include <QFile>
+#include <QStandardPaths>
+#include <QDir>
+#include <QTextStream>
+
+#include <QtMath>
+#include <QDebug>
+
+#include <QTimer>
+#include <QFileSystemWatcher>
+
+#include <QDir>
+#include <QFileInfoList>
+
 
 QGC_LOGGING_CATEGORY(LogDownloadControllerLog, "qgc.analyzeview.logdownloadcontroller")
 
@@ -646,3 +663,240 @@ void LogDownloadController::_setListing(bool active)
         emit requestingListChanged();
     }
 }
+
+void LogDownloadController::saveHistoryDataToFile(
+    const QString& date,
+    const QString& startTime,
+    const QString& endTime,
+    const QString& totalTime,
+    const QString& distance,
+    const QString& battery,
+    const QString& fuel,
+    const QString& sprayVolume,
+    const QString& flowRate,
+    const QString& sprayArea
+) {
+    QString safeSpray = sprayVolume.isEmpty() ? "0.000" : sprayVolume;
+    QString safeFlow  = flowRate.isEmpty()    ? "0.000" : flowRate;
+    QString safeArea = sprayArea.isEmpty()    ? "0.000" : sprayArea;
+
+    QString filePath = "/home/wm_lenovo/Documents/QGC_History/HistoryData.txt";
+    QFile file(filePath);
+
+        // Ensure directory exists
+    QDir dir = QFileInfo(filePath).absoluteDir();
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    bool fileExists = QFile::exists(filePath);
+
+    // Read existing content to check for duplicates
+    QStringList existingLines;
+    if (fileExists) {
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            while (!in.atEnd()) {
+                existingLines << in.readLine().trimmed();
+            }
+            file.close();
+        }
+    }
+
+    // Create new row
+    QString newRow = date + "," + startTime + "," + endTime + "," +
+                     totalTime + "," + distance + "," + battery + "," + fuel + "," +
+                     safeSpray + "," + safeFlow + "," + safeArea;
+
+     // Check for duplicate by startTime (unique per flight) ===
+    QString key = date + "," + startTime;
+    bool duplicateFound = false;
+
+    for (const QString& line : existingLines) {
+        if (line.startsWith(key)) {   // only compare date + startTime
+            duplicateFound = true;
+            break;
+        }
+    }
+
+    if (duplicateFound) {
+        qDebug() << "Duplicate flight skipped (same start time):" << key;
+        return;
+    }
+
+    // Append row if unique
+    if (!file.open(QIODevice::Append | QIODevice::Text)) {
+        qWarning() << "Failed to open file for writing:" << filePath;
+        return;
+    }
+
+    QTextStream out(&file);
+
+    // Write header if new file
+    if (!fileExists) {
+        out << "Date,Flight Start Time,Flight End Time,Total Flight Time,"
+               "Flight Distance,Remaining Battery (%),Fuel Consumed,"
+               "Spray Volume (L),Flow Rate (mL/min), Spray Area (ha)\n";
+    }
+
+    out << newRow << "\n";
+    file.close();
+}
+
+void LogDownloadController::loadHistoryFile()
+{
+    QString filePath = "/home/wm_lenovo/Documents/QGC_History/HistoryData.txt";
+    QFile file(filePath);
+
+    if (!file.exists()) {
+        qWarning() << "History file not found:" << filePath;
+        _historyText = "History file not found.";
+        emit historyTextChanged();
+        return;
+    }
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Failed to open history file:" << file.errorString();
+        _historyText = "Failed to open history file.";
+        emit historyTextChanged();
+        return;
+    }
+
+    QTextStream in(&file);
+    _historyText = in.readAll();
+    file.close();
+
+    emit historyTextChanged();
+}
+
+void LogDownloadController::loadCsvFile(const QString& filePath)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Failed to open file:" << filePath;
+        return;
+    }
+
+    _csvLines.clear();
+    while (!file.atEnd()) {
+        _csvLines.append(file.readLine().trimmed());
+    }
+    file.close();
+
+    parseCsvSummary();
+}
+
+void LogDownloadController::parseCsvSummary()
+{
+    if (_csvLines.isEmpty())
+        return;
+
+    QString header = _csvLines.first();
+    QStringList columns = header.split(',');
+
+    int idxTimestamp      = columns.indexOf("Timestamp");
+    int idxFlightTime     = columns.indexOf("flightTime");
+    int idxFlightDistance = columns.indexOf("flightDistance");
+    int idxBattery        = columns.indexOf("battery0.percentRemaining");
+    int idxFuel           = columns.indexOf("efi.fuelConsumed");
+    int idxClockDate      = columns.indexOf("clock.currentDate");
+    
+    int idxSprayVolume = columns.indexOf("sprayVolume");
+    int idxFlowRate    = columns.indexOf("flowRate");
+    int idxSprayArea   = columns.indexOf("sprayArea");
+
+    // Flight state variables
+    QString startDate, startTime;
+    QString endTime, totalTime, distance, battery, fuel;
+    QString sprayVolume, flowRate, sprayArea;
+    bool inFlight = false;
+
+    for (int i = 1; i < _csvLines.size(); ++i) {
+        QStringList values = _csvLines[i].split(',');
+
+        QString ts   = (idxTimestamp      >= 0 && idxTimestamp      < values.size()) ? values[idxTimestamp] : "";
+        QString ftime= (idxFlightTime     >= 0 && idxFlightTime     < values.size()) ? values[idxFlightTime] : "";
+        QString dist = (idxFlightDistance >= 0 && idxFlightDistance < values.size()) ? values[idxFlightDistance] : "";
+        QString batt = (idxBattery        >= 0 && idxBattery        < values.size()) ? values[idxBattery] : "";
+        QString fu   = (idxFuel           >= 0 && idxFuel           < values.size()) ? values[idxFuel] : "";
+        QString cdate= (idxClockDate      >= 0 && idxClockDate      < values.size()) ? values[idxClockDate] : "";
+        
+        sprayVolume = (idxSprayVolume >= 0 && idxSprayVolume < values.size()) ? values[idxSprayVolume] : "";
+        flowRate    = (idxFlowRate    >= 0 && idxFlowRate    < values.size()) ? values[idxFlowRate]    : "";
+        sprayArea   = (idxSprayArea   >= 0 && idxSprayArea   < values.size()) ? values[idxSprayArea]   : "";
+
+
+        // Detect new flight when flightTime resets
+        if (!ftime.isEmpty() && ftime == "00:00:00") {
+            if (inFlight) {
+                // Finalize previous flight
+                bool valid = (!totalTime.isEmpty() && totalTime != "00:00:00" &&
+                              !distance.isEmpty() && distance.toDouble() > 0.1);
+
+                if (valid) {
+                    saveHistoryDataToFile(
+                        startDate, startTime, endTime, totalTime,
+                        distance, battery, fuel, sprayVolume, flowRate, sprayArea
+                    );
+                }
+            }
+
+            // Start new flight
+            startDate = cdate;
+            startTime = ts;
+            inFlight = true;
+        }
+
+        // Always update last-known values for ongoing flight
+        endTime   = ts;
+        totalTime = ftime;
+        distance  = dist;
+        battery   = batt;
+        fuel      = fu;
+    }
+
+    // Save last flight if valid
+    if (inFlight) {
+        bool valid = (!totalTime.isEmpty() && totalTime != "00:00:00" &&
+                      !distance.isEmpty() && distance.toDouble() > 0.1);
+
+        if (valid) {
+            saveHistoryDataToFile(
+                startDate, startTime, endTime, totalTime,
+                distance, battery, fuel, sprayVolume, flowRate, sprayArea
+            );
+        }
+    }
+}
+
+void LogDownloadController::loadAllCsvFiles(const QString& folderPath)
+{
+    QDir dir(folderPath);
+    if (!dir.exists()) {
+        qWarning() << "Folder not found:" << folderPath;
+        return;
+    }
+
+    QStringList filters;
+    filters << "*.csv";
+    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files, QDir::Name);
+
+    if (fileList.isEmpty()) {
+        qWarning() << "No CSV files found in folder:" << folderPath;
+        return;
+    }
+
+    // Clear history text before reloading
+    _historyText.clear();
+
+    for (const QFileInfo& fileInfo : fileList) {
+        QString filePath = fileInfo.absoluteFilePath();
+        qDebug() << "Processing CSV file:" << filePath;
+
+        // Load + parse CSV (this will internally call saveHistoryDataToFile for each detected flight)
+        loadCsvFile(filePath);
+    }
+
+    // Finally, reload history file and show in QML
+    loadHistoryFile();
+}  
