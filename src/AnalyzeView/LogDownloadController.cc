@@ -35,8 +35,12 @@
 #include <QTimer>
 #include <QFileSystemWatcher>
 
-#include <QDir>
+
 #include <QFileInfoList>
+
+#include <QStringList>
+#include <cmath>
+#include <QRegularExpression>
 
 
 QGC_LOGGING_CATEGORY(LogDownloadControllerLog, "qgc.analyzeview.logdownloadcontroller")
@@ -680,10 +684,10 @@ void LogDownloadController::saveHistoryDataToFile(
     QString safeFlow  = flowRate.isEmpty()    ? "0.000" : flowRate;
     QString safeArea = sprayArea.isEmpty()    ? "0.000" : sprayArea;
 
-    QString filePath = "/home/wm_lenovo/Documents/QGC_History/HistoryData.txt";
+    QString filePath = "C:/Users/PC/Documents/HistoryData.txt";
     QFile file(filePath);
-
-        // Ensure directory exists
+    
+    // Ensure directory exists
     QDir dir = QFileInfo(filePath).absoluteDir();
     if (!dir.exists()) {
         dir.mkpath(".");
@@ -745,7 +749,7 @@ void LogDownloadController::saveHistoryDataToFile(
 
 void LogDownloadController::loadHistoryFile()
 {
-    QString filePath = "/home/wm_lenovo/Documents/QGC_History/HistoryData.txt";
+    QString filePath = "C:/Users/PC/Documents/HistoryData.txt";
     QFile file(filePath);
 
     if (!file.exists()) {
@@ -800,7 +804,7 @@ void LogDownloadController::parseCsvSummary()
     int idxBattery        = columns.indexOf("battery0.percentRemaining");
     int idxFuel           = columns.indexOf("efi.fuelConsumed");
     int idxClockDate      = columns.indexOf("clock.currentDate");
-    
+
     int idxSprayVolume = columns.indexOf("sprayVolume");
     int idxFlowRate    = columns.indexOf("flowRate");
     int idxSprayArea   = columns.indexOf("sprayArea");
@@ -820,12 +824,12 @@ void LogDownloadController::parseCsvSummary()
         QString batt = (idxBattery        >= 0 && idxBattery        < values.size()) ? values[idxBattery] : "";
         QString fu   = (idxFuel           >= 0 && idxFuel           < values.size()) ? values[idxFuel] : "";
         QString cdate= (idxClockDate      >= 0 && idxClockDate      < values.size()) ? values[idxClockDate] : "";
-        
+
         sprayVolume = (idxSprayVolume >= 0 && idxSprayVolume < values.size()) ? values[idxSprayVolume] : "";
         flowRate    = (idxFlowRate    >= 0 && idxFlowRate    < values.size()) ? values[idxFlowRate]    : "";
         sprayArea   = (idxSprayArea   >= 0 && idxSprayArea   < values.size()) ? values[idxSprayArea]   : "";
 
-
+   
         // Detect new flight when flightTime resets
         if (!ftime.isEmpty() && ftime == "00:00:00") {
             if (inFlight) {
@@ -895,8 +899,185 @@ void LogDownloadController::loadAllCsvFiles(const QString& folderPath)
 
         // Load + parse CSV (this will internally call saveHistoryDataToFile for each detected flight)
         loadCsvFile(filePath);
+
+        // === Delete CSV after successful parse ===
+        QFile csvFile(filePath);
+        if (csvFile.remove()) {
+            qDebug() << "Deleted CSV file after processing:" << filePath;
+        } else {
+            qWarning() << "Failed to delete CSV file:" << filePath << "-" << csvFile.errorString();
+        }
     }
 
     // Finally, reload history file and show in QML
     loadHistoryFile();
 }  
+
+QVariantList LogDownloadController::parseHistory(const QString& text)
+{
+    QVariantList out;
+
+    QStringList lines = text.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts);
+    if (lines.isEmpty()) {
+        return out;
+    }
+
+    int startIdx = 0;
+    if (lines.first().startsWith("Date", Qt::CaseInsensitive)) {
+        startIdx = 1;
+    }
+
+    for (int i = startIdx; i < lines.size(); ++i) {
+        QStringList cols = lines[i].split(",");
+        if (cols.size() < 7) {
+            continue;
+        }
+
+        QString dateStr  = cols.value(0).trimmed();
+        QString startStr = cols.value(1).trimmed();
+        QString timeStr  = cols.value(3).trimmed(); // total flight time
+        QString distStr  = cols.value(4).trimmed();
+        QString battStr  = cols.value(5).trimmed();
+        QString fuelStr  = cols.value(6, "0").trimmed();
+        QString sprayStr = cols.value(7, "0").trimmed();
+        QString flowStr  = cols.value(8, "0").trimmed();
+        QString areaStr  = cols.value(9, "0").trimmed();
+
+        QDateTime t = QDateTime::fromString(startStr, "yyyy-MM-dd hh:mm:ss.zzz");
+        if (!t.isValid()) {
+            t = QDateTime::fromString(startStr, "yyyy-MM-dd hh:mm:ss");
+        }
+        if (!t.isValid() && !dateStr.isEmpty()) {
+            QStringList parts = startStr.split(" ");
+            QString timeOnly = parts.size() > 1 ? parts[1] : "00:00:00";
+            t = QDateTime::fromString(dateStr + " " + timeOnly, "M/d/yyyy hh:mm:ss");
+        }
+        if (!t.isValid()) {
+            continue;
+        }
+
+        // convert flight time
+        double totalSeconds = 0;
+        QRegularExpression re("^\\d{2}:\\d{2}:\\d{2}$");
+        QRegularExpressionMatch match = re.match(timeStr);
+
+        if (match.hasMatch()) {
+            QStringList parts = timeStr.split(":");
+            totalSeconds = parts[0].toInt() * 3600 + parts[1].toInt() * 60 + parts[2].toInt();
+        } else {
+            totalSeconds = timeStr.toDouble();
+        }
+
+        QVariantMap point;
+        point["tMs"]        = t.toMSecsSinceEpoch();
+        point["distance"]   = distStr.toDouble();
+        point["battery"]    = battStr.toDouble();
+        point["flightTime"] = totalSeconds / 60.0;
+        point["fuel"]       = fuelStr.toDouble();
+        point["sprayVolume"]= sprayStr.toDouble();
+        point["flowRate"]   = flowStr.toDouble();
+        point["sprayArea"]  = areaStr.toDouble();
+
+        out.append(point);
+    }
+
+    // Sort by time
+    std::sort(out.begin(), out.end(), [](const QVariant& a, const QVariant& b) {
+        return a.toMap()["tMs"].toLongLong() < b.toMap()["tMs"].toLongLong();
+    });
+
+    return out;
+}
+
+QVariantMap LogDownloadController::rebuildSeries(const QVariantList& points)
+{
+    QVariantMap result;
+
+    if (points.isEmpty()) {
+        return result;
+    }
+
+    qint64 minTime = points.first().toMap()["tMs"].toLongLong();
+    qint64 maxTime = points.last().toMap()["tMs"].toLongLong();
+
+    double maxDist = 0, maxFlightTime = 0, maxSpray = 0, maxFuel = 0, maxFlow = 0, maxArea = 0;
+
+    for (const QVariant& v : points) {
+        QVariantMap p = v.toMap();
+        maxDist       = std::max(maxDist, p["distance"].toDouble());
+        maxFlightTime = std::max(maxFlightTime, p["flightTime"].toDouble());
+        maxSpray      = std::max(maxSpray, p["sprayVolume"].toDouble());
+        maxFuel       = std::max(maxFuel, p["fuel"].toDouble());
+        maxFlow       = std::max(maxFlow, p["flowRate"].toDouble());
+        maxArea       = std::max(maxArea, p["sprayArea"].toDouble());
+    }
+
+    qint64 padMs = std::max<qint64>(60000, (maxTime - minTime) / 10);
+
+    result["timeMin"] = minTime - padMs;
+    result["timeMax"] = maxTime + padMs;
+    result["distMax"] = std::max(10.0, std::ceil(maxDist * 1.2));
+    result["timeMaxY"]= std::max(5.0, std::ceil(maxFlightTime * 1.2));
+    result["sprayMax"]= std::max(1.0, std::ceil(maxSpray * 1.2));
+    result["fuelMax"] = std::max(1.0, std::ceil(maxFuel * 1.2));
+    result["flowMax"] = std::max(1.0, std::ceil(maxFlow * 1.2));
+    result["areaMax"] = std::max(1.0, std::ceil(maxArea * 1.2));
+
+    return result;
+}
+
+QVariantMap LogDownloadController::computeSummary(const QVariantList& points)
+{
+    QVariantMap summary;
+    int flights = points.size();
+    double totalTime = 0;
+    double totalSpray = 0;
+    double totalArea = 0;
+    double totalFuel = 0;
+
+    // For today's stats
+    int flightsToday = 0;
+    double totalTimeToday = 0;
+    double totalSprayToday = 0;
+    double totalAreaToday = 0;
+    double totalFuelToday = 0;
+
+    QDate today = QDate::currentDate();
+
+    for (const QVariant& v : points) {
+        QVariantMap p = v.toMap();
+
+        totalTime  += p["flightTime"].toDouble();
+        totalSpray += p["sprayVolume"].toDouble();
+        totalArea  += p["sprayArea"].toDouble();
+        totalFuel  += p["fuel"].toDouble();
+
+        // --- Filter by today's date ---
+        qint64 ms = p["tMs"].toLongLong();
+        QDateTime ts = QDateTime::fromMSecsSinceEpoch(ms).toLocalTime();
+
+        if (ts.date() == QDate::currentDate()) {
+            flightsToday++;
+            totalTimeToday  += p["flightTime"].toDouble();
+            totalSprayToday += p["sprayVolume"].toDouble();
+            totalAreaToday  += p["sprayArea"].toDouble();
+            totalFuelToday  += p["fuel"].toDouble();
+        }
+    }
+
+    // Total summary
+    summary["flights"] = flights;
+    summary["totalTimeMin"] = totalTime;
+    summary["totalSprayVol"] = totalSpray;
+    summary["totalSprayArea"] = totalArea;
+    summary["totalFuel"] = totalFuel;
+
+    // Today's summary
+    summary["flightsToday"] = flightsToday;
+    summary["timeTodayMin"] = totalTimeToday;
+    summary["sprayVolToday"] = totalSprayToday;
+    summary["sprayAreaToday"] = totalAreaToday;
+    summary["fuelToday"] = totalFuelToday;
+
+    return summary;
+}

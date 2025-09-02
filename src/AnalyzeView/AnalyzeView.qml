@@ -115,7 +115,7 @@ Rectangle {
         anchors.right:          parent.right
         anchors.top:            parent.top
         anchors.bottom:         parent.bottom
-        source:                 "LogDownloadPage.qml"
+        source:                 "DroneStatisticsPage.qml"
 
         property string title
 

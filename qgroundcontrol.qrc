@@ -64,6 +64,7 @@
         <file alias="MapSettings.qml">src/UI/preferences/MapSettings.qml</file>
         <file alias="MAVLinkConsolePage.qml">src/AnalyzeView/MAVLinkConsolePage.qml</file>
         <file alias="MAVLinkInspectorPage.qml">src/AnalyzeView/MAVLinkInspectorPage.qml</file>
+        <file alias="DroneStatisticsPage.qml">src/AnalyzeView/DroneStatisticsPage.qml</file>
         <file alias="PX4LogTransferSettings.qml">src/UI/preferences/PX4LogTransferSettings.qml</file>
         <file alias="MissionSettingsEditor.qml">src/PlanView/MissionSettingsEditor.qml</file>
         <file alias="ActuatorComponent.qml">src/AutoPilotPlugins/PX4/ActuatorComponent.qml</file>

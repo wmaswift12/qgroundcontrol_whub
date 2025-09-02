@@ -80,6 +80,11 @@ const QVariantList &QGCCorePlugin::analyzePages()
 {
     static const QVariantList analyzeList = {
         QVariant::fromValue(new QmlComponentInfo(
+            tr("Drone Statistics"),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qml/DroneStatisticsPage.qml")),
+            QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/MAVLinkInspector.svg")))),
+            
+        QVariant::fromValue(new QmlComponentInfo(
             tr("Log Download"),
             QUrl::fromUserInput(QStringLiteral("qrc:/qml/LogDownloadPage.qml")),
             QUrl::fromUserInput(QStringLiteral("qrc:/qmlimages/LogDownloadIcon.svg")))),

@@ -19,6 +19,9 @@
 #include <QtCore/QObject>
 #include <QtQmlIntegration/QtQmlIntegration>
 
+#include <QDateTime>
+#include <QVariantList>
+
 Q_DECLARE_LOGGING_CATEGORY(LogDownloadControllerLog)
 
 struct LogDownloadData;
@@ -80,6 +83,9 @@ public:
 
     Q_INVOKABLE void loadCsvFile(const QString &filePath);
     Q_INVOKABLE void loadAllCsvFiles(const QString& folderPath);
+    Q_INVOKABLE QVariantList parseHistory(const QString& text);
+    Q_INVOKABLE QVariantMap rebuildSeries(const QVariantList& points);
+    Q_INVOKABLE QVariantMap computeSummary(const QVariantList& points);
 
     int lastBatteryUsage() const { return _lastBatteryUsage; }
     QString lastFlightTime() const { return _lastFlightTime; }
@@ -97,7 +103,7 @@ public:
     QString remainingBattery() const { return _remainingBattery; }
     QString fuelConsumed() const { return _fuelConsumed; }
     QStringList flightSummaries() const { return _flightSummaries; }
-    
+   
 
 signals:
     void requestingListChanged();
@@ -158,7 +164,7 @@ private:
     void _updateHistoryText();
     QString _csvText;
 
-    void parseCsvSummary(); 
+    void parseCsvSummary();
     QStringList _csvLines;
     QStringList _flightSummaries;
 
@@ -170,9 +176,20 @@ private:
     QString _remainingBattery;
     QString _fuelConsumed;
 
+    struct HistoryPoint {
+        qint64 tMs;
+        double distance;
+        double battery;
+        double flightTime;
+        double fuel;
+        double sprayVolume;
+        double flowRate;
+        double sprayArea;
+    };
+
     static constexpr uint32_t kTimeOutMs = 500;
     static constexpr uint32_t kGUIRateMs = 17; ///< 1000ms / 60fps
     static constexpr uint32_t kRequestLogListTimeoutMs = 5000;
 };
 
-#endif 
+#endif
